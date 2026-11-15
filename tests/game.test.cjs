@@ -59,7 +59,7 @@ test('every embedded JavaScript script parses', () => {
 });
 
 test('external dictionary parses and is available before game-core', () => {
-    assert.match(html, /<script src="words-a\.js"><\/script>\s*<script id="game-core">/);
+    assert.match(html, /<script src="words-a\.js\?v=a"><\/script>\s*<script id="game-core">/);
     assert.doesNotThrow(() => new vm.Script(wordsSource, { filename: 'words-a.js' }));
     const context = vm.createContext({ TextEncoder });
     vm.runInContext(wordsSource, context, { filename: 'words-a.js', timeout: 1000 });
