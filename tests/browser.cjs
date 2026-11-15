@@ -96,11 +96,18 @@ async function playable(page) {
 
 async function main() {
     const html = await fs.readFile(path.resolve(__dirname, '../index.html'));
+    const dictionary = await fs.readFile(path.resolve(__dirname, '../words-a.js'));
     server = http.createServer((request, response) => {
         const pathname = new URL(request.url, 'http://localhost').pathname;
-        if (pathname === '/codenames' || pathname === '/codenames/') {
+        if (pathname === '/codenames') {
+            response.writeHead(301, { Location: '/codenames/' });
+            response.end();
+        } else if (pathname === '/codenames/') {
             response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
             response.end(html);
+        } else if (pathname === '/codenames/words-a.js') {
+            response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+            response.end(dictionary);
         } else if (pathname === '/favicon.ico') {
             response.writeHead(204);
             response.end();
@@ -128,7 +135,9 @@ async function main() {
             await dialog.dismiss().catch(() => {});
         }
     });
-    await page.goto(url);
+    await page.goto(url.slice(0, -1));
+    assert.equal(page.url(), url);
+    assert.equal(await page.locator('.card').count(), 25);
     let generated;
     let neutrals;
 
@@ -143,6 +152,48 @@ async function main() {
         assert.deepEqual(await words(page), generated.cards.map(entry => entry.word));
         assert.equal(new Set(await words(page)).size, 25);
         await counters(page);
+    });
+
+    await group('both sides show the same word and reveal label without duplicate accessibility text', async () => {
+        const verify = async () => page.locator('.card').evaluateAll(cards => cards.map(card => {
+            const reverse = card.querySelector('.card-face-inverted');
+            const upright = card.querySelector('.card-word');
+            const inverted = card.querySelector('.card-word-inverted');
+            return {
+                upright: upright.textContent,
+                inverted: inverted.textContent,
+                label: card.querySelector('.card-label').textContent,
+                reverseLabel: card.querySelector('.card-label-inverted').textContent,
+                hidden: reverse.getAttribute('aria-hidden'),
+                transform: getComputedStyle(reverse).transform,
+                accessible: card.getAttribute('aria-label'),
+                uprightSize: getComputedStyle(upright).fontSize,
+                invertedSize: getComputedStyle(inverted).fontSize
+            };
+        }));
+        const check = async () => {
+            const faces = await verify();
+            assert.equal(faces.length, 25);
+            for (const [index, face] of faces.entries()) {
+                assert.equal(face.upright, generated.cards[index].word);
+                assert.equal(face.inverted, face.upright);
+                assert.equal(face.reverseLabel, face.label);
+                assert.equal(face.hidden, 'true');
+                assert.equal(face.transform, 'matrix(-1, 0, 0, -1, 0, 0)');
+                assert.equal(face.uprightSize, face.invertedSize);
+                assert.ok(face.accessible.startsWith(face.upright + ','));
+            }
+            return faces;
+        };
+        assert.ok((await check()).every(face => face.label === ''));
+        await card(page, neutrals[0]).dblclick();
+        assert.equal((await check())[neutrals[0]].label, 'Neutre');
+        await page.locator('#key-toggle').check();
+        assert.ok((await check()).every(face => face.label));
+        await page.locator('#key-toggle').uncheck();
+        assert.equal((await check())[neutrals[0]].label, 'Neutre');
+        await undoAll(page);
+        assert.ok((await check()).every(face => face.label === ''));
     });
 
     await group('single click safe; double click reveals exactly once', async () => {
@@ -270,11 +321,11 @@ async function main() {
         const before = await saved(page);
         const originalWords = await words(page);
         const count = confirmations;
-        for (const value of ['', 'not a code', 'A-0000-0000', 'B-2345-6789']) {
+        for (const value of ['', 'not a code', 'A-0000-0000', 'C-2345-6789']) {
             await join(page, value);
             assert.equal(await page.locator('#join-error').isVisible(), true);
             assert.equal(await page.locator('#join-code').getAttribute('aria-invalid'), 'true');
-            assert.match(await page.locator('#join-error').textContent(), value.startsWith('B-') ? /version|prise en charge/i : /invalide/i);
+            assert.match(await page.locator('#join-error').textContent(), value.startsWith('C-') ? /version|prise en charge/i : /invalide/i);
             assert.deepEqual(await saved(page), before);
             assert.equal(confirmations, count);
         }
@@ -402,6 +453,14 @@ async function main() {
     await group('responsive geometry, five columns, unclipped words and screenshots', async () => {
         const screenshotDirectory = process.env.SCREENSHOT_DIR;
         if (screenshotDirectory) await fs.mkdir(screenshotDirectory, { recursive: true });
+        await page.locator('#key-toggle').check();
+        await page.evaluate(() => {
+            const longest = [...Codenames.WORDS_A].sort((a, b) => b.length - a.length).slice(0, 25);
+            document.querySelectorAll('.card').forEach((card, index) => {
+                card.querySelector('.card-word').textContent = longest[index];
+                card.querySelector('.card-word-inverted').textContent = longest[index];
+            });
+        });
         for (const [width, height] of [[1180, 820], [1024, 768], [768, 1024], [390, 844], [320, 740]]) {
             await page.setViewportSize({ width, height });
             await page.mouse.move(0, 0);
@@ -421,15 +480,21 @@ async function main() {
                         const second = boxes[other];
                         if (Math.min(box.right, second.right) - Math.max(box.left, second.left) > 0.5 && Math.min(box.bottom, second.bottom) - Math.max(box.top, second.top) > 0.5) problems.push(`cards ${index}/${other} overlap`);
                     }
-                    const word = cards[index].querySelector('.card-word');
-                    const range = document.createRange();
-                    range.selectNodeContents(word);
-                    for (const line of range.getClientRects()) {
-                        if (line.left < box.left + 0.5 || line.right > box.right - 0.5 || line.top < box.top || line.bottom > box.bottom) problems.push(`word ${index} clipped`);
-                        const label = rect(cards[index].querySelector('.card-label'));
-                        if (line.bottom > label.top + 0.5) problems.push(`word ${index} overlaps label`);
+                    for (const [wordSelector, labelSelector] of [['.card-word', '.card-label'], ['.card-word-inverted', '.card-label-inverted']]) {
+                        const word = cards[index].querySelector(wordSelector);
+                        const label = cards[index].querySelector(labelSelector);
+                        const face = rect(word.parentElement);
+                        const wordBox = rect(word);
+                        const labelBox = rect(label);
+                        if (wordBox.left < box.left + 0.5 || wordBox.right > box.right - 0.5 || wordBox.top < box.top || wordBox.bottom > box.bottom) problems.push(`${wordSelector} ${index} clipped`);
+                        if (labelBox.top < box.top || labelBox.bottom > box.bottom) problems.push(`${labelSelector} ${index} clipped`);
+                        if (face.top < box.top || face.bottom > box.bottom) problems.push(`${wordSelector} ${index} face clipped`);
+                        if (Math.min(wordBox.bottom, labelBox.bottom) - Math.max(wordBox.top, labelBox.top) > 0.5) problems.push(`${wordSelector} ${index} overlaps label`);
+                        if (word.scrollWidth > word.clientWidth + 1 || word.scrollHeight > word.clientHeight + 1) problems.push(`${wordSelector} ${index} overflows`);
                     }
-                    if (word.scrollWidth > word.clientWidth + 1 || word.scrollHeight > word.clientHeight + 1) problems.push(`word ${index} overflows`);
+                    const reverseFace = rect(cards[index].querySelector('.card-face-inverted'));
+                    const uprightFace = rect(cards[index].querySelector('.card-face:not(.card-face-inverted)'));
+                    if (reverseFace.bottom > uprightFace.top + 0.5) problems.push(`faces ${index} overlap`);
                 });
                 return problems;
             });
@@ -437,6 +502,7 @@ async function main() {
             if (screenshotDirectory) await page.screenshot({ path: path.join(screenshotDirectory, `codenames-${width}x${height}.png`), fullPage: true });
             console.log(`  geometry ${width}x${height}`);
         }
+        await page.locator('#key-toggle').uncheck();
     });
 
     await group('corrupted saved state reload remains playable', async () => {
@@ -462,6 +528,239 @@ async function main() {
         } finally {
             await unavailable.close();
         }
+    });
+    const customList = [...Array.from({ length: 23 }, (_, index) => `MOT ${String.fromCharCode(65 + index)}`), 'ÉTOILE', 'PORTE AVION'].sort();
+    const customInput = customList.map(word => `  ${word.toLowerCase().normalize('NFD').replaceAll(' ', '   ')}  `).reverse().join(',');
+    const customState = target => target.evaluate(() => {
+        const persisted = JSON.parse(localStorage.getItem(Codenames.STORAGE_KEY));
+        return Codenames.newState(persisted.code, persisted.customWords);
+    });
+    const fillCustom = async (target, input) => {
+        await target.locator('#custom-details').evaluate(element => { element.open = true; });
+        await target.locator('#custom-words').fill(input);
+    };
+    const createCustom = async (target, input) => {
+        await fillCustom(target, input);
+        await target.locator('#custom-create').click();
+    };
+    const visibleColors = target => target.locator('.card').evaluateAll(elements => elements.map(element => [...element.classList].filter(value => ['red', 'blue', 'neutral', 'assassin'].includes(value))));
+    let customCode;
+    let customGenerated;
+
+    await group('custom list creates 25 unique cards and another device joins a reordered equivalent list', async () => {
+        await page.setViewportSize({ width: 1180, height: 820 });
+        await join(page, FIXED);
+        assert.equal(await page.locator('#custom-details #custom-form #custom-words').count(), 1);
+        assert.equal(await page.locator('#custom-form #custom-create').count(), 1);
+        assert.equal(await page.locator('#custom-details #custom-error').count(), 1);
+        const count = confirmations;
+        await createCustom(page, customInput);
+        assert.equal(confirmations, count + 1);
+        customCode = await code(page);
+        assert.match(customCode, /^B-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/);
+        assert.deepEqual((await saved(page)).customWords, customList);
+        assert.equal(await revealed(page), 0);
+        assert.equal(new Set(await words(page)).size, 25);
+        assert.deepEqual([...(await words(page))].sort(), customList);
+        customGenerated = await customState(page);
+        assert.deepEqual(await words(page), customGenerated.cards.map(entry => entry.word));
+        const phoneContext = await context({ viewport: { width: 390, height: 844 }, isMobile: true });
+        try {
+            const phone = await phoneContext.newPage();
+            phone.on('dialog', dialog => dialog.accept());
+            await phone.goto(url);
+            await fillCustom(phone, customList.join(', '));
+            await join(phone, customCode.toLowerCase());
+            assert.equal(await code(phone), customCode);
+            assert.deepEqual(await words(phone), await words(page));
+            assert.deepEqual((await saved(phone)).customWords, customList);
+            await phone.locator('#key-toggle').check();
+            await page.locator('#key-toggle').check();
+            assert.deepEqual(await visibleColors(phone), await visibleColors(page));
+            assert.ok((await visibleColors(phone)).every(colors => colors.length === 1));
+            await page.locator('#key-toggle').uncheck();
+            const neutral = customGenerated.cards.findIndex(entry => entry.color === 'neutral');
+            await card(page, neutral).dblclick();
+            assert.equal(await revealed(phone), 0);
+            assert.deepEqual((await saved(page)).history, [neutral]);
+        } finally {
+            await phoneContext.close();
+        }
+    });
+
+    await group('invalid, missing and mismatched custom lists preserve game before any confirmation', async () => {
+        const previous = await saved(page);
+        const previousWords = await words(page);
+        const count = confirmations;
+        const inputs = ['', customList.slice(0, 24).join(','), [...customList, ''].join(','), [...customList, customList[0].toLowerCase()].join(',')];
+        for (const input of inputs) {
+            await createCustom(page, input);
+            assert.equal(await page.locator('#custom-error').isVisible(), true);
+            assert.ok((await page.locator('#custom-error').textContent()).trim());
+            assert.deepEqual(await saved(page), previous);
+            assert.deepEqual(await words(page), previousWords);
+            assert.equal(await code(page), customCode);
+            assert.equal(confirmations, count);
+            await join(page, customCode);
+            assert.equal(await page.locator('#join-error').isVisible(), true);
+            assert.deepEqual(await saved(page), previous);
+            assert.equal(confirmations, count);
+        }
+        const mismatch = [...customList.slice(1), 'AUTRE MOT'].join(',');
+        await fillCustom(page, mismatch);
+        await join(page, customCode);
+        assert.equal(await page.locator('#join-error').isVisible(), true);
+        assert.ok((await page.locator('#join-error').textContent()).trim());
+        assert.equal(confirmations, count, 'A mismatched list must fail before replacement confirmation');
+        assert.deepEqual(await saved(page), previous);
+        assert.deepEqual(await words(page), previousWords);
+        await fillCustom(page, customInput);
+        await join(page, customCode);
+        assert.equal(confirmations, count, 'Same-code valid join preserves progress without confirmation');
+        assert.deepEqual(await saved(page), previous);
+        const otherCode = await page.evaluate(words => Codenames.createCustomCode(words, { getRandomValues(bytes) { bytes.fill(31); return bytes; } }), customList);
+        assert.notEqual(otherCode, customCode);
+        acceptConfirmation = false;
+        try {
+            await join(page, otherCode);
+            assert.equal(confirmations, count + 1);
+            assert.deepEqual(await saved(page), previous);
+            await createCustom(page, customInput);
+            assert.equal(confirmations, count + 2);
+            assert.deepEqual(await saved(page), previous);
+            await page.locator('#new-game').click();
+            assert.equal(confirmations, count + 3);
+            assert.deepEqual(await saved(page), previous);
+            await page.locator('#custom-details').evaluate(element => { element.open = true; });
+            await page.locator('#default-game').click();
+            assert.equal(confirmations, count + 4);
+            assert.deepEqual(await saved(page), previous);
+            assert.deepEqual(await words(page), previousWords);
+        } finally {
+            acceptConfirmation = true;
+        }
+    });
+
+    await group('custom refresh keeps list and history with key off, undo works and new game reuses list', async () => {
+        const before = await saved(page);
+        const previousWords = await words(page);
+        await page.locator('#key-toggle').check();
+        await page.reload();
+        assert.equal(await code(page), customCode);
+        assert.deepEqual(await words(page), previousWords);
+        assert.deepEqual(await saved(page), before);
+        assert.equal(await revealed(page), 1);
+        assert.equal(await page.locator('#key-toggle').isChecked(), false);
+        await page.locator('#undo').click();
+        assert.equal(await revealed(page), 0);
+        assert.deepEqual((await saved(page)).history, []);
+        const neutral = customGenerated.cards.findIndex(entry => entry.color === 'neutral');
+        await card(page, neutral).dblclick();
+        await page.locator('#key-toggle').check();
+        await fillCustom(page, 'invalid edited textarea');
+        const count = confirmations;
+        await page.locator('#new-game').click();
+        assert.equal(confirmations, count + 1);
+        const nextCode = await code(page);
+        assert.match(nextCode, /^B-/);
+        assert.notEqual(nextCode.slice(2, 10), customCode.slice(2, 10));
+        assert.equal(nextCode.slice(-12), customCode.slice(-12));
+        assert.deepEqual((await saved(page)).customWords, customList);
+        assert.deepEqual([...(await words(page))].sort(), customList);
+        assert.deepEqual((await saved(page)).history, []);
+        assert.equal(await revealed(page), 0);
+        assert.equal(await page.locator('#key-toggle').isChecked(), false);
+        await page.locator('#custom-details').evaluate(element => { element.open = true; });
+        await page.locator('#default-game').click();
+        assert.match(await code(page), /^A-/);
+        assert.equal(Object.hasOwn(await saved(page), 'customWords'), false);
+        await join(page, FIXED);
+        assert.equal(await code(page), FIXED);
+        assert.deepEqual(await words(page), (await board(page)).cards.map(entry => entry.word));
+        await createCustom(page, customList.join(','));
+        customCode = await code(page);
+    });
+
+    await group('corrupted custom list, fingerprint and histories recover to a playable default game', async () => {
+        const base = await saved(page);
+        const initial = await customState(page);
+        const missing = { ...base };
+        delete missing.customWords;
+        const assassin = initial.cards.findIndex(entry => entry.color === 'assassin');
+        const neutral = initial.cards.findIndex(entry => entry.color === 'neutral');
+        const corrupted = [
+            missing,
+            { ...base, customWords: [...customList.slice(1), 'AUTRE MOT'] },
+            { ...base, customWords: [...customList, customList[0]] },
+            { ...base, customWords: customList.slice(0, 24) },
+            { ...base, code: base.code.slice(0, -1) + (base.code.at(-1) === '2' ? '3' : '2') },
+            { ...base, revealed: [neutral], history: [] },
+            { ...base, revealed: [neutral, neutral], history: [neutral, neutral] },
+            { ...base, revealed: [assassin, neutral], history: [assassin, neutral] }
+        ];
+        for (const value of corrupted) {
+            await page.evaluate(value => localStorage.setItem(Codenames.STORAGE_KEY, JSON.stringify(value)), value);
+            await page.reload();
+            assert.equal(await page.locator('#notice').isVisible(), true);
+            assert.match(await page.locator('#notice').textContent(), /illisible|sauvegarde/i);
+            await playable(page);
+            assert.equal(Object.hasOwn(await saved(page), 'customWords'), false);
+        }
+    });
+
+    await group('custom and join forms fit a 320px viewport without horizontal overflow', async () => {
+        await page.setViewportSize({ width: 320, height: 740 });
+        await fillCustom(page, customInput);
+        await page.locator('#join-details').evaluate(element => { element.open = true; });
+        await page.locator('#join-code').fill(customCode);
+        assert.deepEqual(await page.evaluate(() => {
+            const issues = [];
+            if (document.documentElement.scrollWidth > innerWidth + 1 || document.body.scrollWidth > innerWidth + 1) issues.push('page overflow');
+            for (const selector of ['#custom-details', '#custom-form', '#custom-words', '#custom-create', '#join-form', '#join-code']) {
+                const element = document.querySelector(selector);
+                const box = element.getBoundingClientRect();
+                if (box.width <= 0 || box.left < -0.5 || box.right > innerWidth + 0.5) issues.push(`${selector} outside viewport`);
+                if (selector !== '#join-code' && element.scrollWidth > element.clientWidth + 1) issues.push(`${selector} horizontal overflow`);
+            }
+            return issues;
+        }), []);
+        await page.locator('#custom-create').click();
+        assert.match(await code(page), /^B-/);
+        assert.equal(new Set(await words(page)).size, 25);
+        assert.deepEqual([...(await words(page))].sort(), customList);
+        await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Denied'); } } }));
+        await page.locator('#copy-code').click();
+        assert.equal(await page.locator('#manual-code').inputValue(), await code(page));
+        const displayedCode = await page.locator('#game-code').evaluate(element => {
+            const box = element.getBoundingClientRect();
+            return { left: box.left, right: box.right, viewport: innerWidth, overflow: element.scrollWidth > element.clientWidth + 1 };
+        });
+        assert.ok(displayedCode.left >= 0 && displayedCode.right <= displayedCode.viewport && !displayedCode.overflow);
+    });
+    await group('long custom words and both colour labels fit in portrait phone cards', async () => {
+        const longWords = Array.from({ length: 25 }, (_, index) => `ABCDEFGHIJKLMNOPQRSTUV${String(index).padStart(2, '0')}`);
+        await createCustom(page, longWords.join(','));
+        await page.locator('#key-toggle').check();
+        const issues = await page.evaluate(() => {
+            const problems = [];
+            const cards = [...document.querySelectorAll('.card')];
+            if (document.documentElement.scrollWidth > innerWidth + 1) problems.push('page overflow');
+            for (const [index, card] of cards.entries()) {
+                const box = card.getBoundingClientRect();
+                const faces = [...card.querySelectorAll('.card-face')];
+                for (const face of faces) {
+                    const faceBox = face.getBoundingClientRect();
+                    const word = face.querySelector('.card-word, .card-word-inverted');
+                    const label = face.querySelector('.card-label, .card-label-inverted');
+                    const wordBox = word.getBoundingClientRect(), labelBox = label.getBoundingClientRect();
+                    if (faceBox.top < box.top || faceBox.bottom > box.bottom || wordBox.left < box.left || wordBox.right > box.right || labelBox.left < box.left || labelBox.right > box.right) problems.push(`card ${index} clipped`);
+                    if (Math.min(wordBox.bottom, labelBox.bottom) - Math.max(wordBox.top, labelBox.top) > 0.5) problems.push(`card ${index} label overlap`);
+                }
+                if (faces[0].getBoundingClientRect().bottom > faces[1].getBoundingClientRect().top + 0.5) problems.push(`card ${index} faces overlap`);
+            }
+            return problems;
+        });
+        assert.deepEqual(issues, []);
     });
     await desktop.close();
     assert.deepEqual(pageErrors, []);

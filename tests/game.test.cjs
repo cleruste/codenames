@@ -6,9 +6,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createHash, webcrypto } = require('node:crypto');
+const { TextEncoder } = require('node:util');
 
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const wordsSource = fs.readFileSync(path.join(root, 'words-a.js'), 'utf8');
 const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
     .filter(match => !/\bsrc\s*=/i.test(match[1]));
 const core = scripts.find(match => /\bid\s*=\s*["']game-core["']/i.test(match[1]));
@@ -18,7 +20,8 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 const code = 'A-2345-6789';
 
 function instance(source = core[2], globals = {}) {
-    const context = vm.createContext({ crypto: webcrypto, ...globals });
+    const context = vm.createContext({ crypto: webcrypto, TextEncoder, ...globals });
+    vm.runInContext(wordsSource, context, { filename: 'words-a.js', timeout: 1000 });
     vm.runInContext(source, context, { filename: 'index.html:game-core', timeout: 1000 });
     return vm.runInContext('Codenames', context, { timeout: 1000 });
 }
@@ -53,6 +56,16 @@ test('every embedded JavaScript script parses', () => {
     scripts.forEach((match, index) => {
         assert.doesNotThrow(() => new vm.Script(match[2], { filename: `inline-${index}.js` }));
     });
+});
+
+test('external dictionary parses and is available before game-core', () => {
+    assert.match(html, /<script src="words-a\.js"><\/script>\s*<script id="game-core">/);
+    assert.doesNotThrow(() => new vm.Script(wordsSource, { filename: 'words-a.js' }));
+    const context = vm.createContext({ TextEncoder });
+    vm.runInContext(wordsSource, context, { filename: 'words-a.js', timeout: 1000 });
+    assert.equal(vm.runInContext('Array.isArray(WORDS_A) && Object.isFrozen(WORDS_A) && WORDS_A.length === 794', context, { timeout: 1000 }), true);
+    vm.runInContext(core[2], context, { filename: 'index.html:game-core', timeout: 1000 });
+    assert.equal(vm.runInContext('Codenames.WORDS_A === WORDS_A', context, { timeout: 1000 }), true);
 });
 
 test('static deployment disables Jekyll without configuring a custom domain', () => {
@@ -138,7 +151,7 @@ test('invalid characters, lengths, types, and unsupported versions are rejected'
         assert.throws(() => game.generateBoard(input));
         assert.throws(() => game.newState(input));
     }
-    for (const input of ['B-2345-6789', 'Z-AAAA-AAAA']) {
+    for (const input of ['C-2345-6789', 'Z-AAAA-AAAA']) {
         assert.throws(() => game.normalizeCode(input), /Version/);
         assert.throws(() => game.generateBoard(input), /Version/);
     }
@@ -183,7 +196,7 @@ test('word and color shuffles use independent domain-separated random streams', 
     assert.equal(board.start, start);
     assert.deepEqual(clone(board.cards.map(card => card.word)), clone(game.shuffle(game.WORDS_A, wordsRandom).slice(0, 25)));
     assert.deepEqual(clone(board.cards.map(card => card.color)), clone(colors));
-    const alteredSource = core[2].replace('shuffle(WORDS_A, wordsRandom)', 'shuffle(WORDS_A.slice(1), wordsRandom)');
+    const alteredSource = core[2].replace(/shuffle\(([^,\n]+), wordsRandom\)/, 'shuffle(($1).slice(1), wordsRandom)');
     assert.notEqual(alteredSource, core[2]);
     const alteredBoard = instance(alteredSource).generateBoard(code);
     assert.equal(alteredBoard.start, board.start);
@@ -315,7 +328,7 @@ test('persistence roundtrips reveals and history while always restoring key mode
 test('corrupt saves reject malformed data, duplicate indices, and invalid histories', () => {
     const invalid = [
         '', '{', 'undefined', 'null', '[]', 'true', '42', '{}',
-        saved({ schema: 2 }), saved({ schema: '1' }), saved({ code: 'B-2345-6789' }),
+        saved({ schema: 2 }), saved({ schema: '1' }), saved({ code: 'C-2345-6789' }),
         saved({ code: null }), saved({ revealed: null }), saved({ history: {} }),
         saved({ revealed: [0], history: [] }), saved({ revealed: [], history: [0] }),
         saved({ revealed: [0, 0], history: [0, 0] }),
@@ -346,6 +359,161 @@ test('post-terminal histories are rejected and a clean save recovers corrupted s
         assert.equal(game.load(storage).issue, 'corrupt');
         assert.equal(game.save(storage, state), true);
         assert.deepEqual(clone(game.load(storage)), { state: clone(state), issue: null });
+    }
+});
+
+const customWords = Array.from({ length: 40 }, (_, index) => `MOT ${String.fromCharCode(65 + Math.floor(index / 26), 65 + index % 26)}`);
+const canonicalWords = [...customWords, 'ÉTOILE', 'PORTE AVION'].sort();
+const equivalentWords = [...canonicalWords].reverse().map(word => `  ${word.toLowerCase().normalize('NFD').replaceAll(' ', '   ')}  `);
+const fakeCrypto = (offset = 0) => ({
+    getRandomValues(bytes) {
+        assert.equal(bytes.length, 8);
+        bytes.set(Array.from({ length: 8 }, (_, index) => (index + offset) & 255));
+        return bytes;
+    }
+});
+
+function fingerprint(words) {
+    const bytes = createHash('sha256').update(JSON.stringify(words), 'utf8').digest();
+    const bits = [...bytes].map(byte => byte.toString(2).padStart(8, '0')).join('').slice(0, 60);
+    return bits.match(/.{5}/g).map(chunk => game.ALPHABET[parseInt(chunk, 2)]).join('');
+}
+
+test('custom lists normalize comma strings and arrays to sorted canonical NFC uppercase words', () => {
+    const before = [...equivalentWords];
+    assert.deepEqual(clone(game.normalizeCustomWords(equivalentWords)), canonicalWords);
+    assert.deepEqual(clone(game.normalizeCustomWords(equivalentWords.join(','))), canonicalWords);
+    assert.deepEqual(equivalentWords, before);
+    assert.deepEqual(clone(game.normalizeCustomWords(customWords.slice(0, 25))), customWords.slice(0, 25).sort());
+    const maximum = Array.from({ length: 1000 }, (_, index) => `MOT ${String.fromCharCode(65 + Math.floor(index / 676), 65 + Math.floor(index / 26) % 26, 65 + index % 26)}`);
+    assert.equal(game.normalizeCustomWords(maximum).length, 1000);
+    assert.throws(() => game.normalizeCustomWords([...maximum, 'UN AUTRE MOT']));
+});
+
+test('custom normalization is idempotent for uppercasing that introduces combining characters', () => {
+    const words = [...customWords.slice(0, 24), 'ΐ'];
+    const normalized = game.normalizeCustomWords(words);
+    assert.deepEqual(clone(game.normalizeCustomWords(normalized)), clone(normalized));
+    const code = game.createCustomCode(words, fakeCrypto());
+    const state = game.newState(code, words);
+    assert.deepEqual(clone(game.newState(code, normalized)), clone(state));
+    assert.deepEqual(clone(game.restore(game.serialize(state))), clone(state));
+});
+
+test('custom lists reject invalid types, counts, empty entries, embedded commas and normalized duplicates', () => {
+    const valid = customWords.slice(0, 25);
+    const invalid = [
+        null, undefined, 25, {}, true, '', [], valid.slice(0, 24),
+        [...valid, ''], [...valid, '   '], [...valid, null], [...valid, 42], [...valid, {}],
+        [...valid, 'DEUX,MOTS'], valid.join(',') + ',', ',' + valid.join(','),
+        [...valid, valid[0]], [...valid, `  ${valid[0].toLowerCase().replace(' ', '   ')}  `],
+        [...valid, 'ÉTOILE', 'e\u0301toile'], [...valid, 'MOT\u0000INTERDIT']
+    ];
+    for (const input of invalid) {
+        assert.throws(() => game.normalizeCustomWords(input), JSON.stringify(input));
+        assert.throws(() => game.createCustomCode(input, fakeCrypto()), JSON.stringify(input));
+    }
+});
+
+test('custom codes use eight cryptographic seed bytes and a SHA256 first-60-bit list fingerprint', () => {
+    const safeMath = Object.create(Math);
+    safeMath.random = () => { throw new Error('Math.random must not be called'); };
+    let calls = 0;
+    const crypto = { getRandomValues(bytes) { calls++; return fakeCrypto().getRandomValues(bytes); } };
+    const local = instance(core[2], { crypto, Math: safeMath });
+    assert.equal(digest(canonicalWords), 'e2abbf3a675d3f5b74af4bcac40f90e6a7f909701ccc9fcac993160697640bc4');
+    assert.equal(fingerprint(canonicalWords), 'WCPVYGM9DNZP');
+    const expected = 'B-23456789-WCPVYGM9DNZP';
+    assert.equal(local.createCustomCode(equivalentWords), expected);
+    assert.equal(local.createCustomCode(canonicalWords.join(','), crypto), expected);
+    assert.equal(calls, 2);
+    assert.equal(local.createCustomCode(canonicalWords, { getRandomValues(bytes) { bytes.set([0, 1, 2, 3, 28, 29, 30, 255]); return bytes; } }), 'B-2345WXYZ-WCPVYGM9DNZP');
+    assert.equal(typeof local.createCustomCode(canonicalWords), 'string');
+    assert.match(expected, /^B-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/);
+    assert.equal(game.normalizeCode(expected.toLowerCase()), expected);
+    assert.equal(game.createCustomCode(customWords, fakeCrypto()).slice(-12), fingerprint([...customWords].sort()));
+    for (const crypto of [null, {}, { getRandomValues: true }]) assert.throws(() => game.createCustomCode(customWords, crypto));
+    assert.throws(() => instance(core[2], { crypto: undefined }).createCustomCode(customWords));
+    assert.throws(() => game.createCustomCode(customWords, { getRandomValues() { throw new Error('blocked crypto'); } }), /blocked crypto/);
+});
+
+test('custom boards are synchronous, identical across independent instances and equivalent list order or case', () => {
+    const first = instance();
+    const second = instance();
+    const input = first.createCustomCode(canonicalWords, fakeCrypto());
+    const initial = first.newState(input, equivalentWords.join(','));
+    const generated = first.generateBoard(input, canonicalWords);
+    assert.equal(digest(generated), 'a374a198fbeaa769ae524b38d4a3b044e077e28552955cdfb9ed905bc14d620d');
+    assert.equal(typeof generated.then, 'undefined');
+    assert.equal(typeof initial.then, 'undefined');
+    assert.deepEqual(clone(initial.customWords), canonicalWords);
+    assert.deepEqual(clone(initial), clone(second.newState(input, canonicalWords)));
+    assert.deepEqual(clone(generated), clone(second.generateBoard(input, equivalentWords)));
+    assert.deepEqual(clone(initial.cards), clone(generated.cards));
+    assert.equal(generated.cards.length, 25);
+    assert.equal(new Set(generated.cards.map(card => card.word)).size, 25);
+    assert.ok(generated.cards.every(card => canonicalWords.includes(card.word)));
+    const counts = { red: 0, blue: 0, neutral: 0, assassin: 0 };
+    generated.cards.forEach(card => { assert.ok(Object.hasOwn(counts, card.color)); counts[card.color]++; });
+    assert.equal(counts[generated.start], 9);
+    assert.equal(counts[generated.start === 'red' ? 'blue' : 'red'], 8);
+    assert.equal(counts.neutral, 7);
+    assert.equal(counts.assassin, 1);
+    const other = first.createCustomCode(equivalentWords, fakeCrypto(8));
+    assert.notEqual(other.slice(2, 10), input.slice(2, 10));
+    assert.equal(other.slice(-12), input.slice(-12));
+    assert.notDeepEqual(clone(first.generateBoard(other, canonicalWords).cards), clone(generated.cards));
+    const minimum = customWords.slice(0, 25);
+    const minimumBoard = first.generateBoard(first.createCustomCode(minimum, fakeCrypto()), minimum);
+    assert.deepEqual(clone(minimumBoard.cards.map(card => card.word)).sort(), [...minimum].sort());
+});
+
+test('custom board and state reject missing, invalid and mismatched lists synchronously', () => {
+    const input = game.createCustomCode(canonicalWords, fakeCrypto());
+    const changed = [...canonicalWords.slice(1), 'AUTRE MOT'];
+    for (const words of [undefined, null, [], customWords.slice(0, 24), changed, [...canonicalWords, canonicalWords[0]]]) {
+        assert.throws(() => game.generateBoard(input, words));
+        assert.throws(() => game.newState(input, words));
+    }
+    const changedFingerprint = input.slice(0, -1) + (input.at(-1) === '2' ? '3' : '2');
+    for (const invalid of [changedFingerprint, input.slice(0, -1), input + '2', input.replace('B-', 'C-'), input.replace('23456789', '03456789')]) {
+        assert.throws(() => game.generateBoard(invalid, canonicalWords));
+        assert.throws(() => game.newState(invalid, canonicalWords));
+    }
+});
+
+test('custom persistence stores canonical words, reconstructs history, and restores key mode off', () => {
+    const input = game.createCustomCode(canonicalWords, fakeCrypto());
+    const initial = game.newState(input, equivalentWords);
+    const choices = indices(initial, 'neutral').slice(0, 3).reverse();
+    const played = choices.reduce((state, index) => game.reveal(state, index), initial);
+    const raw = game.serialize({ ...played, keyMode: true });
+    assert.deepEqual(JSON.parse(raw), { schema: 1, code: input, customWords: canonicalWords, revealed: choices, history: choices });
+    assert.deepEqual(clone(game.restore(raw)), clone(played));
+    assert.equal(game.restore(JSON.stringify({ ...JSON.parse(raw), keyMode: true })).keyMode, false);
+    const storage = memoryStorage();
+    assert.equal(game.save(storage, played), true);
+    assert.deepEqual(clone(game.load(storage)), { state: clone(played), issue: null });
+    assert.deepEqual(clone(game.undo(game.load(storage).state).history), choices.slice(0, -1));
+    assert.deepEqual(clone(game.undo(played).cards), clone(initial.cards));
+    assert.equal(Object.hasOwn(JSON.parse(game.serialize(game.newState(code))), 'customWords'), false);
+});
+
+test('custom persisted list, fingerprint and history corruption are rejected', () => {
+    const input = game.createCustomCode(canonicalWords, fakeCrypto());
+    const state = game.newState(input, canonicalWords);
+    const base = JSON.parse(game.serialize(state));
+    const missing = { ...base };
+    delete missing.customWords;
+    const bad = [missing];
+    for (const customWords of [null, {}, [], canonicalWords.slice(0, 24), [...canonicalWords, canonicalWords[0]], [...canonicalWords.slice(1), 'AUTRE MOT']]) bad.push({ ...base, customWords });
+    bad.push({ ...base, code: input.slice(0, -1) + (input.at(-1) === '2' ? '3' : '2') });
+    for (const history of [[0, 0], [-1], [25], ['0'], [indices(state, 'assassin')[0], indices(state, 'neutral')[0]], [...indices(state, 'red'), indices(state, 'neutral')[0]]]) bad.push({ ...base, revealed: history, history });
+    bad.push({ ...base, revealed: [0], history: [] }, { ...base, revealed: [0], history: [1] }, { ...base, revealed: [], history: [0] });
+    for (const value of bad) {
+        const raw = JSON.stringify(value);
+        assert.equal(game.restore(raw), null, raw);
+        assert.deepEqual(clone(game.load(memoryStorage(raw))), { state: null, issue: 'corrupt' });
     }
 });
 

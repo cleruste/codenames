@@ -43,12 +43,14 @@
         .mode-badge { font-size: 9px; padding: 5px 7px; color: var(--muted); background: #eae9e1; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
         .hint { color: var(--muted); font-size: 10px; }
         .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-        .card { position: relative; min-width: 0; min-height: 94px; border: 1px solid #d9d8cd; border-radius: 7px; padding: 15px 3px 22px; background: #edece3; color: #41443b; box-shadow: 0 3px 0 #ddddd1; display: flex; align-items: center; justify-content: center; flex-direction: column; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: background .16s, transform .16s, border-color .16s; }
+        .card { position: relative; min-width: 0; min-height: 94px; border: 1px solid #d9d8cd; border-radius: 7px; padding: 6px 3px; background: #edece3; color: #41443b; box-shadow: 0 3px 0 #ddddd1; display: flex; align-items: stretch; justify-content: center; flex-direction: column; gap: 4px; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: background .16s, transform .16s, border-color .16s; }
         .card:not(:disabled):hover { background: #e3e3d5; border-color: #b2b5a1; transform: translateY(-2px); }
-        .card-word { max-width: 100%; font-size: clamp(10px, 1.1vw, 15px); font-weight: 750; letter-spacing: .4px; overflow-wrap: anywhere; }
+        .card-face { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; }
+        .card-face-inverted { transform: rotate(180deg); }
+        .card-word, .card-word-inverted { max-width: 100%; font-size: clamp(10px, 1.1vw, 15px); font-weight: 750; letter-spacing: .4px; line-height: 1.1; overflow-wrap: anywhere; }
         .card::before { content: ""; position: absolute; top: 8px; left: 8px; width: 4px; height: 4px; border-radius: 50%; background: #cccdbf; }
-        .card-label { position: absolute; bottom: 8px; left: 0; right: 0; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-        .card-label:empty::after { content: "—"; color: #b7baaa; }
+        .card-label, .card-label-inverted { min-height: 1em; font-size: 8px; font-weight: 600; line-height: 1; text-transform: uppercase; letter-spacing: 1px; }
+        .card-label:empty::after, .card-label-inverted:empty::after { content: "—"; color: #b7baaa; }
         .card.red { background: #aa4744; color: #fff7ef; border-color: #9b3c39; box-shadow: 0 3px 0 #873431; }
         .card.blue { background: #357582; color: #f4fbfb; border-color: #2b6371; box-shadow: 0 3px 0 #245a65; }
         .card.neutral { background: #d7c6a0; color: #514832; border-color: #c6b48c; box-shadow: 0 3px 0 #bba77c; }
@@ -83,14 +85,15 @@
         .switch input:focus-visible + .switch-track { outline: 3px solid #bd833d; outline-offset: 4px; }
         .panel p { font-size: 10px; line-height: 1.65; color: var(--muted); margin: 12px 0 0; }
         .code-panel { background: transparent; }
-        .code-line { display: flex; align-items: center; gap: 7px; justify-content: space-between; }
-        #game-code { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 17px; font-weight: 700; letter-spacing: 1px; color: #3d4839; user-select: all; }
+        .code-line { display: flex; align-items: flex-start; gap: 7px; justify-content: space-between; }
+        #game-code { min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 17px; font-weight: 700; letter-spacing: 1px; color: #3d4839; user-select: all; }
         .copy-button { padding: 8px; min-height: 34px; }
         .code-panel details { margin-top: 17px; border-top: 1px solid var(--line); padding-top: 14px; }
         summary { cursor: pointer; font-size: 11px; color: #626a5c; line-height: 1.5; }
         .join-form { margin-top: 12px; display: flex; gap: 5px; flex-wrap: wrap; }
         .join-form label { width: 100%; font-size: 10px; color: var(--muted); }
-        .join-form input, #manual-code { width: 100%; min-width: 0; border: 1px solid #c9cebf; border-radius: 5px; background: #fffefb; padding: 10px; font-family: ui-monospace, monospace; font-size: 13px; color: var(--ink); }
+        .join-form input, .join-form textarea, #manual-code { width: 100%; min-width: 0; border: 1px solid #c9cebf; border-radius: 5px; background: #fffefb; padding: 10px; font-family: ui-monospace, monospace; font-size: 13px; color: var(--ink); }
+        .join-form textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
         .join-form .button { width: 100%; margin-top: 3px; min-height: 35px; }
         .field-error { color: #9f3633 !important; }
         #manual-copy { margin-top: 12px; }
@@ -119,9 +122,9 @@
         dialog .button { margin-top: 15px; width: 100%; }
         @media (min-width: 1450px) { .intro { padding-top: 50px; } .card { min-height: 108px; } }
         @media (min-width: 781px) and (max-height: 850px) { .masthead { min-height: 80px; } .intro { padding: 25px 0 21px; } h1 { font-size: 35px; } .eyebrow { margin-bottom: 9px; } .subtitle { margin-top: 8px; } .layout .card { min-height: 86px; } }
-        @media (max-width: 1050px) { .shell { padding: 0 28px; } .layout { grid-template-columns: minmax(0, 1fr) 226px; gap: 20px; } .panel { padding: 17px; } .card { min-height: 93px; } .board { gap: 8px; } #game-code { font-size: 15px; } .card-word { letter-spacing: 0; font-size: clamp(10px, 1.3vw, 14px); } }
-        @media (max-width: 780px) { .shell { padding: 0 24px; } .masthead { min-height: 85px; } .nav-actions { gap: 16px; } .intro { padding-top: 30px; } .layout { grid-template-columns: minmax(0, 1fr); gap: 21px; } .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .sidebar .panel { margin: 0; } .score-panel { grid-column: 1 / -1; display: flex; align-items: center; gap: 22px; } .score-panel .panel-title { margin: 0; max-width: 65px; line-height: 1.7; } .score-row { flex: 1; } .score-row + .score-row { border: 0; border-left: 1px solid var(--line); padding: 0 0 0 22px; margin: 0; } .remaining { display: none; } .card { min-height: 93px; } .card-word { font-size: clamp(10px, 1.8vw, 14px); } .table-label { display: none; } .legend { margin-bottom: 24px; } }
-        @media (max-width: 480px) { .shell { padding: 0 16px; } .masthead { min-height: 76px; gap: 10px; } .brand { font-size: 14px; gap: 8px; letter-spacing: 1.8px; } .brand-mark { width: 23px; gap: 3px; } .brand-mark i { height: 10px; } .nav-actions { gap: 10px; } .nav-actions .button { font-size: 10px; padding: 8px 9px; min-height: 36px; } .nav-actions .quiet { padding: 4px 0; } .nav-actions svg { display: none; } .intro { padding: 27px 0 20px; } h1 { font-size: 32px; letter-spacing: -1px; } .subtitle { font-size: 11px; max-width: 290px; } .eyebrow { font-size: 8px; } .board-top { margin-bottom: 8px; min-height: 29px; } .board-label { font-size: 10px; gap: 6px; } .mode-badge { font-size: 8px; padding: 4px; letter-spacing: .5px; } .hint { font-size: 9px; } .board { gap: 6px; } .card { min-height: 76px; border-radius: 5px; padding: 13px 2px 19px; box-shadow: 0 2px 0 #ddddd1; } .card-word { font-size: clamp(8px, 2.25vw, 11px); letter-spacing: -.2px; } .card-label { bottom: 7px; font-size: 6px; letter-spacing: .3px; } .card::before { top: 6px; left: 6px; width: 3px; height: 3px; } .card.revealed::after { font-size: 9px; top: 3px; right: 4px; } .board-bottom { min-height: 60px; gap: 8px; } .board-bottom p { font-size: 9px; max-width: 180px; } .board-bottom .button { font-size: 10px; padding: 5px 7px; } .status-banner { padding: 12px; } #game-status { font-size: 10px; } #game-status small { font-size: 9px; } .sidebar { gap: 10px; } .sidebar .panel { padding: 15px 12px; } .score-panel { gap: 12px; } .score-panel .panel-title { font-size: 8px; max-width: 53px; } .score-row { gap: 7px; } .score-row + .score-row { padding-left: 12px; } .team-symbol { width: 22px; height: 30px; font-size: 14px; } .team-name { font-size: 10px; } .score { font-size: 27px; } .start-tag { font-size: 8px; } .key-heading strong { font-size: 10px; } .panel p { font-size: 9px; } .panel-title { font-size: 8px; letter-spacing: 1.1px; margin-bottom: 12px; } #game-code { font-size: 12px; letter-spacing: .2px; } .code-line { gap: 2px; } .copy-button { min-height: 30px; padding: 6px; } .copy-button svg { width: 13px; height: 13px; } .legend { gap: 13px; margin-top: 19px; } .legend span { font-size: 8px; } footer { flex-direction: column; gap: 5px; padding-top: 17px; font-size: 8px; } }
+        @media (max-width: 1050px) { .shell { padding: 0 28px; } .layout { grid-template-columns: minmax(0, 1fr) 226px; gap: 20px; } .panel { padding: 17px; } .card { min-height: 93px; } .board { gap: 8px; } #game-code { font-size: 15px; } .card-word, .card-word-inverted { letter-spacing: 0; font-size: clamp(10px, 1.3vw, 14px); } }
+        @media (max-width: 780px) { .shell { padding: 0 24px; } .masthead { min-height: 85px; } .nav-actions { gap: 16px; } .intro { padding-top: 30px; } .layout { grid-template-columns: minmax(0, 1fr); gap: 21px; } .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .sidebar .panel { margin: 0; } .score-panel { grid-column: 1 / -1; display: flex; align-items: center; gap: 22px; } .score-panel .panel-title { margin: 0; max-width: 65px; line-height: 1.7; } .score-row { flex: 1; } .score-row + .score-row { border: 0; border-left: 1px solid var(--line); padding: 0 0 0 22px; margin: 0; } .remaining { display: none; } .card { min-height: 93px; } .card-word, .card-word-inverted { font-size: clamp(10px, 1.8vw, 14px); } .table-label { display: none; } .legend { margin-bottom: 24px; } }
+        @media (max-width: 480px) { .shell { padding: 0 16px; } .masthead { min-height: 76px; gap: 10px; } .brand { font-size: 14px; gap: 8px; letter-spacing: 1.8px; } .brand-mark { width: 23px; gap: 3px; } .brand-mark i { height: 10px; } .nav-actions { gap: 10px; } .nav-actions .button { font-size: 10px; padding: 8px 9px; min-height: 36px; } .nav-actions .quiet { padding: 4px 0; } .nav-actions svg { display: none; } .intro { padding: 27px 0 20px; } h1 { font-size: 32px; letter-spacing: -1px; } .subtitle { font-size: 11px; max-width: 290px; } .eyebrow { font-size: 8px; } .board-top { margin-bottom: 8px; min-height: 29px; } .board-label { font-size: 10px; gap: 6px; } .mode-badge { font-size: 8px; padding: 4px; letter-spacing: .5px; } .hint { font-size: 9px; } .board { gap: 6px; } .card { min-height: 76px; border-radius: 5px; padding: 5px 2px; box-shadow: 0 2px 0 #ddddd1; } .card-word, .card-word-inverted { font-size: clamp(8px, 2.25vw, 11px); letter-spacing: -.2px; } .card-label, .card-label-inverted { font-size: 6px; letter-spacing: .3px; } .card::before { top: 6px; left: 6px; width: 3px; height: 3px; } .card.revealed::after { font-size: 9px; top: 3px; right: 4px; } .board-bottom { min-height: 60px; gap: 8px; } .board-bottom p { font-size: 9px; max-width: 180px; } .board-bottom .button { font-size: 10px; padding: 5px 7px; } .status-banner { padding: 12px; } #game-status { font-size: 10px; } #game-status small { font-size: 9px; } .sidebar { gap: 10px; } .sidebar .panel { padding: 15px 12px; } .score-panel { gap: 12px; } .score-panel .panel-title { font-size: 8px; max-width: 53px; } .score-row { gap: 7px; } .score-row + .score-row { padding-left: 12px; } .team-symbol { width: 22px; height: 30px; font-size: 14px; } .team-name { font-size: 10px; } .score { font-size: 27px; } .start-tag { font-size: 8px; } .key-heading strong { font-size: 10px; } .panel p { font-size: 9px; } .panel-title { font-size: 8px; letter-spacing: 1.1px; margin-bottom: 12px; } #game-code { font-size: 12px; letter-spacing: .2px; } .code-line { gap: 2px; } .copy-button { min-height: 30px; padding: 6px; } .copy-button svg { width: 13px; height: 13px; } .legend { gap: 13px; margin-top: 19px; } .legend span { font-size: 8px; } footer { flex-direction: column; gap: 5px; padding-top: 17px; font-size: 8px; } }
         @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; } }
     </style>
 </head>
@@ -164,7 +167,8 @@
                         <div class="code-line"><output id="game-code" aria-label="Code de partie"></output><button type="button" id="copy-code" class="button copy-button" aria-label="Copier le code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg></button></div>
                         <p>Même adresse, même code, même grille.<br>Seule la grille initiale est partagée : révélations, compteurs et annulations restent sur cet appareil.</p>
                         <div id="manual-copy" hidden><label for="manual-code">Copie automatique indisponible. Sélectionnez et copiez ce code :</label><input id="manual-code" type="text" readonly spellcheck="false"></div>
-                        <details id="join-details"><summary>Vous avez déjà un code ?</summary><form id="join-form" class="join-form" novalidate><label for="join-code">Code de la partie</label><input id="join-code" type="text" placeholder="A-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="join-error" maxlength="80"><button type="submit" class="button">Charger la grille <span aria-hidden="true">→</span></button><p id="join-error" class="field-error" role="alert" hidden></p></form></details>
+                        <details id="join-details"><summary>Vous avez déjà un code ?</summary><form id="join-form" class="join-form" novalidate><label for="join-code">Code de la partie</label><input id="join-code" type="text" placeholder="A-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="join-error" maxlength="80"><p>Pour un code B, saisissez aussi la même liste personnalisée ci-dessous.</p><button type="submit" class="button">Charger la grille <span aria-hidden="true">→</span></button><p id="join-error" class="field-error" role="alert" hidden></p></form></details>
+                        <details id="custom-details"><summary>Utiliser mes propres mots</summary><p>Saisissez au moins 25 mots distincts, séparés par des virgules. Pour une partie personnalisée, partagez aussi cette liste : chaque téléphone doit la saisir avec le code B. L’ordre et les majuscules ne comptent pas.</p><form id="custom-form" class="join-form" novalidate><label for="custom-words">Liste de mots (25 à 1 000)</label><textarea id="custom-words" placeholder="chat, bateau, soleil, ..." spellcheck="false" aria-describedby="custom-error"></textarea><button type="submit" class="button" id="custom-create">Nouvelle partie personnalisée</button><p id="custom-error" class="field-error" role="alert" hidden></p></form><button type="button" class="button" id="default-game">Nouvelle partie avec les mots par défaut</button></details>
                     </section>
                 </aside>
             </div>
@@ -175,25 +179,93 @@
     <dialog id="rules-dialog" aria-labelledby="rules-title">
         <h2 id="rules-title">Un mot peut tout relier.</h2>
         <ol><li>Formez deux équipes, rouge et bleue, avec un maître-espion par équipe. L’équipe indiquée commence avec neuf agents ; l’autre en a huit.</li><li>Posez la tablette au centre. Chaque maître-espion ouvre cette même adresse sur son téléphone, saisit le code de la tablette et active « Afficher les couleurs », à l’abri des regards.</li><li>À tour de rôle, le maître-espion donne à voix haute un seul mot et un nombre pour relier des agents de sa couleur. Son équipe peut proposer jusqu’à ce nombre de mots, plus un.</li><li>Double-touchez ou double-cliquez un mot sur la tablette pour le révéler. Au clavier, sélectionnez la carte avec Tab, puis Entrée ou Espace. Un agent adverse ou un neutre termine votre tour ; vous pouvez aussi passer oralement.</li><li>La première équipe dont tous les agents sont révélés gagne. L’assassin met immédiatement fin à la partie. Les tours et indices ne sont pas suivis par l’application.</li></ol>
-        <p>Le code partage uniquement la grille initiale. Les choix, compteurs et annulations ne se synchronisent pas. Une nouvelle partie exige de saisir le nouveau code sur les téléphones.</p>
+        <p>Le code partage uniquement la grille initiale. Pour une liste personnalisée, chaque appareil doit aussi saisir la même liste de mots ; l’ordre et les majuscules ne comptent pas. Les choix, compteurs et annulations ne se synchronisent pas. Une nouvelle partie exige de saisir le nouveau code sur les téléphones.</p>
         <p>La clé reste dans le navigateur : elle est discrète, mais ne protège pas contre la triche. Le mode couleurs bloque les révélations et annulations accidentelles.</p>
         <button type="button" class="button primary" id="close-rules">À la table !</button>
     </dialog>
     <noscript><p class="notice">Activez JavaScript pour créer et jouer une partie de Codenames.</p></noscript>
+    <script src="words-a.js"></script>
     <script id="game-core">
         'use strict';
         const Codenames = (() => {
             const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
             const VERSION = 'A';
             const STORAGE_KEY = 'codenames.fr.saved';
-            const WORDS_A = Object.freeze(`ABEILLE ABRICOT ACACIA ACCORD ACROBATE ACTEUR ADRESSE AFFICHE AIGLE AIGUILLE AILE AIMANT AIR ALARME ALGUE ALLUMETTE ALPINISTE AMANDE AMBULANCE AMPOULE ANCRE ANGE ANIMAL ANNEAU ANTENNE ARAIGNÉE ARBRE ARC ARCHE ARGENT ARMURE ARROSOIR ARTISTE ASCENSEUR ASPIRATEUR ASSIETTE ASTRONAUTE ATELIER ATOME AUBE AUTRUCHE AVION AVOCAT BAGUETTE BALEINE BALLON BANANE BANC BANQUE BARBE BARQUE BARRAGE BATEAU BÂTON BAVETTE BEC BEURRE BIBLIOTHÈQUE BIJOU BILLE BISON BLÉ BLOC BOBINE BOIS BOÎTE BOMBE BONBON BONNET BORD BOTTE BOUCHE BOUCHON BOUCLIER BOUGIE BOULE BOUQUET BOURDON BOURSE BOUTON BRANCHE BRAS BRIQUE BROSSE BROUILLARD BULLE BUREAU CABANE CÂBLE CACAHUÈTE CADRE CAFÉ CAGE CAILLOU CAISSE CAMÉLÉON CAMÉRA CAMION CAMP CANAL CANARD CANNE CANON CAPE CAPITAINE CARAVANE CAROTTE CARREAU CARTE CASCADE CASQUE CASSEROLE CASTOR CATHÉDRALE CAVE CEINTURE CENDRE CERF CERISE CERVEAU CHAÎNE CHAISE CHAMEAU CHAMP CHAMPIGNON CHANCE CHANDELLE CHANSON CHAPEAU CHARBON CHARGE CHAT CHÂTEAU CHAUSSETTE CHAUSSURE CHEF CHEMIN CHEMISE CHENILLE CHEVAL CHEVEU CHÈVRE CHIEN CHIFFRE CHOCOLAT CHOU CHOUETTE CIEL CIGALE CIMENT CINÉMA CIRQUE CISEAUX CITRON CLASSE CLÉ CLOCHE CLOWN COCCINELLE COCHON COCO CŒUR COFFRE COL COLLE COLLINE COLONNE COMÈTE COMPAS COMPTE CONCERT CONCOMBRE CONDUCTEUR CONFITURE CONSOLE CONTE COQ COQUILLAGE CORAIL CORDE CORNE CORPS COSTUME COU COUCHE COUDE COULEUR COULOIR COUR COURANT COURONNE COURSE COUTEAU COUVERTURE CRABE CRAYON CRÊPE CRÊTE CREVETTE CROCHET CROCODILE CROIX CROÛTE CUBE CUILLÈRE CUISINE CUIVRE CYGNE DAME DANSE DAUPHIN DENT DÉSERT DESSIN DIAMANT DINOSAURE DISQUE DOCTEUR DOIGT DOMINO DONJON DRAGON DRAP DRAPEAU DROIT DRONE DUNE ÉCHELLE ÉCLAIR ÉCLIPSE ÉCOLE ÉCORCE ÉCRAN ÉCUREUIL ÉCUME ÉGLISE ÉLÉPHANT ÉMERAUDE EMPIRE ENCRE ENFANT ÉPÉE ÉPICE ÉPINE ÉPONGE ÉQUILIBRE ESCALIER ESCARGOT ESPACE ESPION ÉTANG ÉTOILE ÉVENTAIL FANTÔME FARINE FAUCON FAUTEUIL FÉE FENÊTRE FER FERME FEU FEUILLE FÈVE FICELLE FIGUE FIL FILET FILM FLAMME FLÈCHE FLEUR FLEUVE FLOCON FLÛTE FOIRE FONTAINE FORÊT FOUR FOURCHE FOURMI FOYER FRAISE FRAMBOISE FREIN FROMAGE FRONT FRONTIÈRE FUSÉE FUSIL GÂTEAU GANT GARAGE GARE GARDIEN GAZ GAZELLE GÉANT GEL GIRAFE GLACE GLAND GLOBE GORGE GORILLE GOUTTE GRAIN GRAINE GRANGE GRAPPE GRENOUILLE GRENIER GRÈVE GRILLE GROTTE GRUE GUÊPE GUITARE HACHE HAMAC HAMSTER HARENG HÉLICOPTÈRE HÉRISSON HERBE HÉROS HIBOU HIPPOPOTAME HISTOIRE HIVER HÔPITAL HORLOGE HUILE HUÎTRE ÎLE IMPRIMANTE INCENDIE INDIEN INSECTE INSTRUMENT IRIS JAGUAR JAMBON JARDIN JAUGE JAUNE JET JEU JOIE JOKER JOUR JOURNAL JUGE JUMELLES JUNGLE JUPE KANGOUROU KARATÉ KAYAK KÉPI KIWI KOALA LAC LAINE LAIT LAME LAMPE LANCE LANGUE LAPIN LARME LASER LÉGENDE LÉOPARD LETTRE LÉZARD LIBELLULE LICORNE LIÈGE LIÈVRE LIGNE LIMACE LION LIT LIVRE LOCOMOTIVE LOGE LONGUEUR LOTUS LOUP LOUPE LOUTRE LUGE LUMIÈRE LUNE LUNETTES LUTIN MACHINE MAGICIEN MAIN MAISON MAÎTRE MAÏS MALLE MANCHE MANDARINE MANÈGE MANGUE MANOIR MANTEAU MARAIS MARCHÉ MARCHE MARGUERITE MARIN MARTEAU MASQUE MÂT MATELAS MÉDAILLE MÉDECIN MÉDUSE MÉLANGE MENTHE MER MERLE MÉTAL MÉTÉORE MÉTRO MEUBLE MIEL MINE MINUTE MIROIR MISSILE MOINE MOISSON MONTAGNE MONTRE MORT MOTEUR MOUCHE MOULE MOULIN MOUSSE MOUSTACHE MOUSTIQUE MOUTARDE MOUTON MUR MUSCLE MUSÉE MUSIQUE NAPPE NAVET NAVIRE NEIGE NÉNUPHAR NERF NEZ NID NOEUD NOIR NOISETTE NOIX NOMBRE NOTE NUAGE NUIT OCÉAN ŒIL ŒUF OIE OIGNON OISEAU OLIVE OMBRE ONDE ONGLE OPÉRA OR ORAGE ORANGE ORBITE ORCHESTRE ORDRE OREILLE ORGUE ORME OURS OURSIN OUTIL OUVRAGE PAGE PAILLE PAIN PAIX PALAIS PALME PALMIER PANDA PANIER PANNE PANNEAU PANTHÈRE PAPILLON PARACHUTE PARADIS PARAPLUIE PARC PARCHEMIN PARFUM PAS PASSAGE PASTÈQUE PATIN PATTE PAUME PAUSE PAVÉ PEAU PÊCHE PEIGNE PEINTURE PELLE PENDULE PENSÉE PERCEUSE PERLE PERROQUET PERSIL PHARE PHARMACIE PHOQUE PHOTO PIANO PIC PIÈCE PIED PIERRE PIEUVRE PIGEON PILOTE PIN PINCE PINCEAU PINGOUIN PION PIPE PIRATE PISCINE PISTE PISTOLET PIZZA PLAGE PLANCHE PLANÈTE PLANTE PLÂTRE PLUIE PLUME POCHE POÊLE POIDS POIGNÉE POIL POING POIRE POISON POISSON POIVRE POLICE POMME POMPE POMPIER PONT PORC PORT PORTE POSTE POT POUCE POULE POUPÉE POUSSE POUSSIÈRE PRAIRIE PRINCE PRISE PRISON PRINTEMPS PRUNE PUCE PUITS PULL PYRAMIDE QUAI QUARTIER QUEUE QUILLE QUOTIDIEN RACINE RADAR RADIO RADIS RAIE RAIL RAISIN RAMPE RANG RAT RÂTEAU RAYON REINE RENARD RENNE REPAS REQUIN RÉSEAU RESSORT RÊVE RIDEAU RING RIVIÈRE RIZ ROBE ROBINET ROCHE ROCHER ROI ROMAN ROND ROSE ROSEAU ROUE ROUGE ROULEAU ROUTE RUBAN RUCHE RUE SABLE SABLIER SABOT SAC SAFRAN SAGE SALADE SALLE SALON SANG SAPIN SARDINE SATELLITE SAUCE SAUCISSE SAULE SAUMON SAVON SCARABÉE SCÈNE SCIE SCIENTIFIQUE SCORPION SCULPTURE SEAU SECRET SEIGNEUR SEL SELLE SENS SERPENT SERRURE SERVIETTE SIÈGE SIFFLET SIGNE SILENCE SINGE SIROP SKI SOIE SOIF SOIR SOL SOLDAT SOLEIL SOMMET SON SORCIER SORTIE SOUCHE SOUFFLE SOUPE SOURCIL SOURIS SOURCE SOUTERRAIN SPHÈRE SPORT SQUELETTE STADE STATION STATUE STYLO SUCRE SUD SUJET SURFACE TABLE TABLEAU TABLIER TAMBOUR TAPIS TASSE TAUPE TAUREAU TAXI TÉLÉPHONE TEMPLE TEMPS TENTE TERRE TÊTE THÉ THÉÂTRE THON TIGRE TIMBRE TISSU TOILE TOIT TOMATE TOMBE TONNERRE TORCHE TORNADE TORTUE TOUR TOUPIE TRAIN TRAÎNEAU TRÉSOR TRIANGLE TRICOT TRÔNE TROU TRUFFE TUBE TULIPE TUNNEL TURBAN USINE VACHE VAGUE VAISSEAU VALLÉE VAMPIRE VASE VÉLO VELOURS VENT VENTRE VER VERRE VESTE VIANDE VIE VIGNE VILLE VIN VIOLON VIPÈRE VIRUS VIS VISAGE VITRE VOILE VOISIN VOITURE VOL VOLANT VOLCAN VOLEUR VOLET VOYAGE WAGON YAOURT YÉTI ZÈBRE ZÉRO ZINC ZONE ZOO`.split(' '));
             const LABELS = Object.freeze({ red: 'Agent rouge', blue: 'Agent bleu', neutral: 'Neutre', assassin: 'Assassin' });
             function normalizeCode(input) {
                 if (typeof input !== 'string') throw new Error('Saisissez un code de partie.');
                 const value = input.toUpperCase().replace(/[\s\-–—_.]/g, '');
-                if (!/^[A-Z2-9]{9}$/.test(value) || [...value].some(char => !ALPHABET.includes(char))) throw new Error('Code invalide : utilisez les 9 caractères du code partagé.');
-                if (value[0] !== VERSION) throw new Error('Version de grille non prise en charge. Utilisez un code commençant par A.');
-                return value[0] + '-' + value.slice(1, 5) + '-' + value.slice(5);
+                if (!value || [...value].some(char => !ALPHABET.includes(char))) throw new Error('Code de partie invalide.');
+                if (value[0] !== VERSION && value[0] !== 'B') throw new Error('Version de grille non prise en charge.');
+                if (value[0] === VERSION) {
+                    if (value.length !== 9) throw new Error('Code de partie invalide : 9 caractères attendus.');
+                    return value[0] + '-' + value.slice(1, 5) + '-' + value.slice(5);
+                }
+                if (value.length !== 21) throw new Error('Code de partie personnalisée invalide : 21 caractères attendus.');
+                return 'B-' + value.slice(1, 9) + '-' + value.slice(9);
+            }
+            function normalizeCustomWords(input) {
+                if (typeof input !== 'string' && !Array.isArray(input)) throw new Error('Saisissez une liste de mots séparés par des virgules.');
+                const items = typeof input === 'string' ? input.split(',') : input;
+                if (items.length < 25 || items.length > 1000) throw new Error('La liste doit contenir entre 25 et 1 000 mots distincts.');
+                const words = items.map(word => {
+                    if (typeof word !== 'string') throw new Error('La liste contient un mot invalide.');
+                    const normalized = word.trim().replace(/\s+/gu, ' ').normalize('NFC').toUpperCase().normalize('NFC');
+                    if (normalized.length < 1 || normalized.length > 24 || !/^[\p{L}\p{N}][\p{L}\p{M}\p{N} '’\-]*$/u.test(normalized)) throw new Error('Chaque mot doit contenir de 1 à 24 caractères valides, sans virgule.');
+                    return normalized;
+                });
+                if (new Set(words).size !== words.length) throw new Error('La liste contient des doublons. Chaque mot doit être distinct.');
+                return words.sort();
+            }
+            function sha256(text) {
+                const constants = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+                const bytes = new TextEncoder().encode(text);
+                const padded = new Uint8Array(Math.ceil((bytes.length + 9) / 64) * 64);
+                padded.set(bytes);
+                padded[bytes.length] = 0x80;
+                const data = new DataView(padded.buffer);
+                data.setUint32(padded.length - 8, Math.floor(bytes.length / 0x20000000));
+                data.setUint32(padded.length - 4, (bytes.length * 8) >>> 0);
+                const state = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+                const rotate = (value, bits) => (value >>> bits) | (value << (32 - bits));
+                const schedule = new Uint32Array(64);
+                for (let offset = 0; offset < padded.length; offset += 64) {
+                    for (let i = 0; i < 16; i++) schedule[i] = data.getUint32(offset + i * 4);
+                    for (let i = 16; i < 64; i++) {
+                        const x = schedule[i - 15], y = schedule[i - 2];
+                        schedule[i] = (schedule[i - 16] + (rotate(x, 7) ^ rotate(x, 18) ^ (x >>> 3)) + schedule[i - 7] + (rotate(y, 17) ^ rotate(y, 19) ^ (y >>> 10))) >>> 0;
+                    }
+                    let [a, b, c, d, e, f, g, h] = state;
+                    for (let i = 0; i < 64; i++) {
+                        const first = (h + (rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25)) + ((e & f) ^ (~e & g)) + constants[i] + schedule[i]) >>> 0;
+                        const second = ((rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+                        h = g; g = f; f = e; e = (d + first) >>> 0; d = c; c = b; b = a; a = (first + second) >>> 0;
+                    }
+                    [a, b, c, d, e, f, g, h].forEach((value, index) => { state[index] = (state[index] + value) >>> 0; });
+                }
+                const digest = new Uint8Array(32);
+                const output = new DataView(digest.buffer);
+                state.forEach((value, index) => output.setUint32(index * 4, value));
+                return digest;
+            }
+            function customFingerprint(words) {
+                const digest = sha256(JSON.stringify(words));
+                let result = '';
+                for (let i = 0; i < 12; i++) {
+                    let value = 0;
+                    for (let j = 0; j < 5; j++) {
+                        const bit = i * 5 + j;
+                        value = (value << 1) | ((digest[Math.floor(bit / 8)] >>> (7 - bit % 8)) & 1);
+                    }
+                    result += ALPHABET[value];
+                }
+                return result;
+            }
+            function createCustomCode(words, cryptoSource = globalThis.crypto) {
+                const list = normalizeCustomWords(words);
+                if (!cryptoSource || typeof cryptoSource.getRandomValues !== 'function') throw new Error('Création sécurisée indisponible.');
+                const bytes = cryptoSource.getRandomValues(new Uint8Array(8));
+                return normalizeCode('B' + Array.from(bytes, byte => ALPHABET[byte & 31]).join('') + customFingerprint(list));
             }
             function createCode(cryptoSource = globalThis.crypto) {
                 if (!cryptoSource || typeof cryptoSource.getRandomValues !== 'function') throw new Error('Création sécurisée indisponible. Saisissez le code d’un autre appareil ou ouvrez le jeu dans un navigateur récent.');
@@ -220,16 +292,25 @@
                 for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; }
                 return result;
             }
-            function generateBoard(input) {
+            function generateBoard(input, customWords) {
                 const code = normalizeCode(input);
-                const wordsRandom = stream(hash('codenames:A:words:' + code));
-                const colorsRandom = stream(hash('codenames:A:colors:' + code));
+                const version = code[0];
+                let list = WORDS_A;
+                if (version === 'B') {
+                    list = normalizeCustomWords(customWords);
+                    if (code.split('-')[2] !== customFingerprint(list)) throw new Error('Cette liste ne correspond pas au code. Saisissez exactement la même liste que sur la tablette.');
+                }
+                const wordsRandom = stream(hash('codenames:' + version + ':words:' + code));
+                const colorsRandom = stream(hash('codenames:' + version + ':colors:' + code));
                 const start = colorsRandom() < .5 ? 'red' : 'blue';
                 const colors = shuffle([...Array(9).fill(start), ...Array(8).fill(start === 'red' ? 'blue' : 'red'), ...Array(7).fill('neutral'), 'assassin'], colorsRandom);
-                const words = shuffle(WORDS_A, wordsRandom).slice(0, 25);
+                const words = shuffle(list, wordsRandom).slice(0, 25);
                 return { code, start, cards: words.map((word, index) => ({ word, color: colors[index] })) };
             }
-            function newState(input) { return { ...generateBoard(input), revealed: [], history: [], keyMode: false }; }
+            function newState(input, customWords) {
+                const board = generateBoard(input, customWords);
+                return { ...board, ...(board.code[0] === 'B' ? { customWords: Object.freeze(normalizeCustomWords(customWords)) } : {}), revealed: [], history: [], keyMode: false };
+            }
             function remaining(state, color) { return state.cards.reduce((total, card, index) => total + Number(card.color === color && !state.revealed.includes(index)), 0); }
             function outcome(state) {
                 if (state.revealed.some(index => state.cards[index].color === 'assassin')) return 'assassin';
@@ -246,13 +327,13 @@
                 const index = state.history[state.history.length - 1];
                 return { ...state, revealed: state.revealed.filter(item => item !== index), history: state.history.slice(0, -1) };
             }
-            function serialize(state) { return JSON.stringify({ schema: 1, code: state.code, revealed: state.revealed, history: state.history }); }
+            function serialize(state) { return JSON.stringify({ schema: 1, code: state.code, ...(state.customWords ? { customWords: state.customWords } : {}), revealed: state.revealed, history: state.history }); }
             function restore(raw) {
                 try {
                     const saved = JSON.parse(raw);
                     if (!saved || saved.schema !== 1 || !Array.isArray(saved.revealed) || !Array.isArray(saved.history) || saved.history.length > 25 || saved.revealed.length !== saved.history.length) throw new Error();
                     if (new Set(saved.revealed).size !== saved.revealed.length || saved.revealed.some(index => !Number.isInteger(index) || index < 0 || index >= 25)) throw new Error();
-                    let state = newState(saved.code);
+                    let state = newState(saved.code, saved.customWords);
                     for (const index of saved.history) {
                         const next = reveal(state, index);
                         if (next === state) throw new Error();
@@ -273,7 +354,7 @@
             function save(storage, state) {
                 try { storage.setItem(STORAGE_KEY, serialize(state)); return true; } catch { return false; }
             }
-            return Object.freeze({ ALPHABET, VERSION, STORAGE_KEY, WORDS_A, LABELS, normalizeCode, createCode, hash, stream, shuffle, generateBoard, newState, remaining, outcome, reveal, undo, serialize, restore, load, save });
+            return Object.freeze({ ALPHABET, VERSION, STORAGE_KEY, WORDS_A, LABELS, normalizeCode, normalizeCustomWords, createCode, createCustomCode, hash, stream, shuffle, generateBoard, newState, remaining, outcome, reveal, undo, serialize, restore, load, save });
         })();
     </script>
     <script id="game-ui">
@@ -294,6 +375,7 @@
                 try { state = Codenames.newState(Codenames.createCode()); }
                 catch (error) { notify(error.message); }
             }
+            if (state && state.customWords) $('custom-words').value = state.customWords.join(', ');
             function persist() {
                 if (state && !Codenames.save(storage, state)) notify('Sauvegarde impossible sur cet appareil. Après actualisation, vos choix peuvent être perdus ou revenir à une ancienne sauvegarde. Notez votre code.');
             }
@@ -326,13 +408,26 @@
                     button.dataset.index = index;
                     button.disabled = state.keyMode || revealed || Boolean(end);
                     button.setAttribute('aria-label', card.word + (visible ? ', ' + Codenames.LABELS[card.color] + (revealed ? ', révélée' : ', non révélée') : ', carte cachée. Double-touchez ou appuyez sur Entrée ou Espace pour révéler.'));
+                    const reverse = document.createElement('span');
+                    reverse.className = 'card-face card-face-inverted';
+                    reverse.setAttribute('aria-hidden', 'true');
+                    const reverseWord = document.createElement('span');
+                    reverseWord.className = 'card-word-inverted';
+                    reverseWord.textContent = card.word;
+                    const reverseLabel = document.createElement('span');
+                    reverseLabel.className = 'card-label-inverted';
+                    reverseLabel.textContent = visible ? Codenames.LABELS[card.color] : '';
+                    reverse.append(reverseWord, reverseLabel);
+                    const face = document.createElement('span');
+                    face.className = 'card-face';
                     const word = document.createElement('span');
                     word.className = 'card-word';
                     word.textContent = card.word;
                     const label = document.createElement('span');
                     label.className = 'card-label';
                     label.textContent = visible ? Codenames.LABELS[card.color] : '';
-                    button.append(word, label);
+                    face.append(word, label);
+                    button.append(reverse, face);
                     $('board').append(button);
                 });
                 $('status-banner').className = 'status-banner' + (end ? ' finished' : '') + (end === 'assassin' ? ' assassin-end' : '');
@@ -414,8 +509,8 @@
                 pointerStart = null;
                 render();
             });
-            function replaceGame(code) {
-                const next = Codenames.newState(code);
+            function replaceGame(code, words) {
+                const next = Codenames.newState(code, words);
                 if (state && next.code === state.code) {
                     $('join-error').hidden = true;
                     $('join-code').removeAttribute('aria-invalid');
@@ -424,6 +519,9 @@
                 }
                 if (state && !window.confirm('Remplacer cette partie ? Les choix et annulations de cet appareil seront effacés. Le nouveau code devra être saisi sur les téléphones.')) return false;
                 state = next;
+                if (state.customWords) $('custom-words').value = state.customWords.join(', ');
+                $('custom-error').hidden = true;
+                $('custom-words').removeAttribute('aria-invalid');
                 lastTap = null;
                 pointerStart = null;
                 fallbackId++;
@@ -439,14 +537,32 @@
                 return true;
             }
             $('new-game').addEventListener('click', () => {
+                try {
+                    const words = state && state.customWords;
+                    replaceGame(words ? Codenames.createCustomCode(words) : Codenames.createCode(), words);
+                } catch (error) { notify(error.message); }
+            });
+            $('default-game').addEventListener('click', () => {
                 try { replaceGame(Codenames.createCode()); }
                 catch (error) { notify(error.message); }
+            });
+            $('custom-form').addEventListener('submit', event => {
+                event.preventDefault();
+                try {
+                    const words = Codenames.normalizeCustomWords($('custom-words').value);
+                    replaceGame(Codenames.createCustomCode(words), words);
+                } catch (error) {
+                    $('custom-error').textContent = error.message;
+                    $('custom-error').hidden = false;
+                    $('custom-words').setAttribute('aria-invalid', 'true');
+                }
             });
             $('join-form').addEventListener('submit', event => {
                 event.preventDefault();
                 try {
                     const code = Codenames.normalizeCode($('join-code').value);
-                    if (replaceGame(code)) $('join-details').open = false;
+                    const words = code[0] === 'B' ? $('custom-words').value : undefined;
+                    if (replaceGame(code, words)) $('join-details').open = false;
                 } catch (error) {
                     $('join-error').textContent = error.message;
                     $('join-error').hidden = false;
