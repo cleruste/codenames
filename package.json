@@ -1,0 +1,17 @@
+{
+  "name": "codenames-fr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jeu de déduction en français, statique et sans dépendance de production.",
+  "scripts": {
+    "test": "node --test tests/game.test.cjs",
+    "test:browser": "node tests/browser.cjs",
+    "browser:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

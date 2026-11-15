@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f4ee">
+    <meta name="description" content="Un jeu de mots et de déduction en français, à partager autour de la même table. Une grille, deux équipes, un seul assassin.">
+    <title>Codenames — À vous de faire le lien</title>
+    <style>
+        :root { color-scheme: light; --paper: #f6f4ee; --ink: #292c29; --muted: #73766e; --line: #dfdfd5; --red: #a83e3d; --blue: #266b77; --neutral: #b79d6b; --black: #30352f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+        button, input { font: inherit; }
+        button { cursor: pointer; }
+        button:disabled { cursor: default; }
+        button, input, summary { -webkit-tap-highlight-color: transparent; }
+        :focus-visible { outline: 3px solid #bd833d; outline-offset: 4px; }
+        [hidden] { display: none !important; }
+        .shell { max-width: 1280px; padding: 0 48px; margin: auto; }
+        .masthead { min-height: 104px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
+        .brand { display: flex; gap: 13px; align-items: center; font-size: 19px; font-weight: 850; letter-spacing: 3px; }
+        .brand-mark { width: 29px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; transform: rotate(-7deg); }
+        .brand-mark i { height: 12px; background: var(--red); border-radius: 2px; }
+        .brand-mark i:last-child { background: var(--ink); }
+        .nav-actions { display: flex; align-items: center; gap: 24px; }
+        .button { min-height: 42px; padding: 10px 15px; display: inline-flex; gap: 8px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--ink); font-size: 12px; font-weight: 650; transition: background .15s, border-color .15s; }
+        .button:hover:not(:disabled) { background: #eae8df; border-color: #bbbfb0; }
+        .button.primary { color: white; background: var(--ink); border-color: var(--ink); }
+        .button.primary:hover { background: #444b40; }
+        .button.quiet { border-color: transparent; padding-left: 0; padding-right: 0; color: #555b51; }
+        .button:disabled { opacity: .4; }
+        .button svg { width: 16px; height: 16px; flex: none; }
+        .intro { padding: 43px 0 30px; display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; }
+        .eyebrow { margin: 0 0 11px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 2px; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 3.2vw, 43px); font-weight: 400; letter-spacing: -1.5px; line-height: 1.13; }
+        .subtitle { margin: 12px 0 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+        .table-label { display: flex; gap: 7px; align-items: center; color: var(--muted); font-size: 11px; white-space: nowrap; padding-bottom: 4px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: #778265; }
+        .layout { display: grid; grid-template-columns: minmax(0, 1fr) 256px; gap: 28px; align-items: start; }
+        .board-top { display: flex; justify-content: space-between; align-items: center; min-height: 40px; margin-bottom: 12px; gap: 8px; }
+        .board-label { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 650; }
+        .board-label svg { width: 14px; height: 14px; }
+        .mode-badge { font-size: 9px; padding: 5px 7px; color: var(--muted); background: #eae9e1; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .hint { color: var(--muted); font-size: 10px; }
+        .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+        .card { position: relative; min-width: 0; min-height: 94px; border: 1px solid #d9d8cd; border-radius: 7px; padding: 15px 3px 22px; background: #edece3; color: #41443b; box-shadow: 0 3px 0 #ddddd1; display: flex; align-items: center; justify-content: center; flex-direction: column; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: background .16s, transform .16s, border-color .16s; }
+        .card:not(:disabled):hover { background: #e3e3d5; border-color: #b2b5a1; transform: translateY(-2px); }
+        .card-word { max-width: 100%; font-size: clamp(10px, 1.1vw, 15px); font-weight: 750; letter-spacing: .4px; overflow-wrap: anywhere; }
+        .card::before { content: ""; position: absolute; top: 8px; left: 8px; width: 4px; height: 4px; border-radius: 50%; background: #cccdbf; }
+        .card-label { position: absolute; bottom: 8px; left: 0; right: 0; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .card-label:empty::after { content: "—"; color: #b7baaa; }
+        .card.red { background: #aa4744; color: #fff7ef; border-color: #9b3c39; box-shadow: 0 3px 0 #873431; }
+        .card.blue { background: #357582; color: #f4fbfb; border-color: #2b6371; box-shadow: 0 3px 0 #245a65; }
+        .card.neutral { background: #d7c6a0; color: #514832; border-color: #c6b48c; box-shadow: 0 3px 0 #bba77c; }
+        .card.assassin { background: #30382f; color: #f6f4ee; border-color: #252c24; box-shadow: 0 3px 0 #1c211b; }
+        .card.red::before, .card.blue::before, .card.assassin::before { background: #ffffff60; }
+        .card.neutral::before { background: #8b784b70; }
+        .card.key-only { border-style: dashed; }
+        .card.revealed::after { content: "✓"; position: absolute; top: 5px; right: 7px; font-size: 11px; opacity: .75; }
+        .board-bottom { min-height: 63px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .board-bottom p { color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .board-bottom .button { font-size: 11px; min-height: 34px; padding: 6px 10px; flex-shrink: 0; }
+        .panel { padding: 20px; border: 1px solid var(--line); border-radius: 9px; background: #faf9f5; margin-bottom: 14px; }
+        .panel-title { margin: 0 0 15px; color: #777c70; font-size: 9px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
+        .score-row { display: flex; align-items: center; gap: 11px; }
+        .score-row + .score-row { border-top: 1px solid #e8e7de; padding-top: 16px; margin-top: 16px; }
+        .team-symbol { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 5px; font-size: 17px; font-family: Georgia, serif; background: #f3e6e0; color: var(--red); }
+        .team-symbol.blue { background: #e3eeed; color: var(--blue); }
+        .team-name { flex: 1; font-size: 12px; font-weight: 650; }
+        .start-tag { display: block; margin-top: 4px; font-size: 9px; font-weight: 400; color: var(--muted); }
+        .score { font-family: Georgia, serif; font-size: 31px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--red); }
+        .score.blue { color: var(--blue); }
+        .remaining { margin: 15px 0 0; font-size: 9px; color: var(--muted); text-align: right; }
+        .key-panel { background: #eeefe7; border-color: #dfe2d5; }
+        .key-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+        .key-heading strong { font-size: 12px; }
+        .switch { display: inline-flex; position: relative; flex: none; width: 35px; height: 21px; }
+        .switch input { opacity: 0; width: 35px; height: 21px; margin: 0; position: absolute; z-index: 1; cursor: pointer; }
+        .switch-track { width: 100%; border-radius: 15px; background: #c7ccbd; transition: background .2s; }
+        .switch-track::after { content: ""; position: absolute; width: 15px; height: 15px; top: 3px; left: 3px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; transition: transform .2s; }
+        .switch input:checked + .switch-track { background: #4e6548; }
+        .switch input:checked + .switch-track::after { transform: translateX(14px); }
+        .switch input:focus-visible + .switch-track { outline: 3px solid #bd833d; outline-offset: 4px; }
+        .panel p { font-size: 10px; line-height: 1.65; color: var(--muted); margin: 12px 0 0; }
+        .code-panel { background: transparent; }
+        .code-line { display: flex; align-items: center; gap: 7px; justify-content: space-between; }
+        #game-code { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 17px; font-weight: 700; letter-spacing: 1px; color: #3d4839; user-select: all; }
+        .copy-button { padding: 8px; min-height: 34px; }
+        .code-panel details { margin-top: 17px; border-top: 1px solid var(--line); padding-top: 14px; }
+        summary { cursor: pointer; font-size: 11px; color: #626a5c; line-height: 1.5; }
+        .join-form { margin-top: 12px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .join-form label { width: 100%; font-size: 10px; color: var(--muted); }
+        .join-form input, #manual-code { width: 100%; min-width: 0; border: 1px solid #c9cebf; border-radius: 5px; background: #fffefb; padding: 10px; font-family: ui-monospace, monospace; font-size: 13px; color: var(--ink); }
+        .join-form .button { width: 100%; margin-top: 3px; min-height: 35px; }
+        .field-error { color: #9f3633 !important; }
+        #manual-copy { margin-top: 12px; }
+        #manual-copy label { display: block; font-size: 10px; line-height: 1.6; margin-bottom: 5px; }
+        .status-banner { display: flex; gap: 12px; align-items: center; border: 1px solid #dedfd2; background: #eeefe5; border-radius: 7px; padding: 14px 17px; margin-top: 2px; }
+        .status-icon { width: 25px; height: 25px; border-radius: 50%; border: 1px solid #bdc7ad; display: grid; place-items: center; font-family: Georgia, serif; color: #657255; flex: none; }
+        #game-status { font-size: 11px; font-weight: 650; line-height: 1.6; }
+        #game-status small { font-size: 10px; font-weight: 400; color: #747e68; display: block; }
+        .status-banner.finished { border-color: #bdc7ad; background: #e3ead9; }
+        .status-banner.assassin-end { border-color: #a5aaa0; background: #e0e3dc; }
+        .notice { margin: 0 0 15px; padding: 11px 15px; background: #f2e5cf; border: 1px solid #dec69b; font-size: 12px; line-height: 1.6; border-radius: 6px; }
+        .legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; margin: 21px 0 31px; }
+        .legend span { display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--muted); }
+        .swatch { width: 7px; height: 7px; border-radius: 2px; background: var(--red); }
+        .swatch.blue { background: var(--blue); }
+        .swatch.neutral { background: var(--neutral); }
+        .swatch.assassin { background: var(--black); }
+        footer { border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 24px; padding: 21px 0 25px; color: #888d80; font-size: 9px; letter-spacing: .2px; line-height: 1.8; }
+        footer strong { font-weight: 500; color: #646d5b; }
+        dialog { width: min(520px, calc(100% - 32px)); max-height: calc(100dvh - 40px); border: 1px solid var(--line); border-radius: 12px; padding: 30px; background: var(--paper); color: var(--ink); box-shadow: 0 20px 80px #0003; }
+        dialog::backdrop { background: #252c2577; backdrop-filter: blur(3px); }
+        dialog h2 { font-family: Georgia, serif; font-size: 27px; font-weight: 400; margin: 0 0 20px; }
+        dialog p, dialog li { font-size: 13px; line-height: 1.8; color: #626959; }
+        dialog ol { padding-left: 20px; }
+        dialog li { padding-bottom: 9px; }
+        dialog .button { margin-top: 15px; width: 100%; }
+        @media (min-width: 1450px) { .intro { padding-top: 50px; } .card { min-height: 108px; } }
+        @media (min-width: 781px) and (max-height: 850px) { .masthead { min-height: 80px; } .intro { padding: 25px 0 21px; } h1 { font-size: 35px; } .eyebrow { margin-bottom: 9px; } .subtitle { margin-top: 8px; } .layout .card { min-height: 86px; } }
+        @media (max-width: 1050px) { .shell { padding: 0 28px; } .layout { grid-template-columns: minmax(0, 1fr) 226px; gap: 20px; } .panel { padding: 17px; } .card { min-height: 93px; } .board { gap: 8px; } #game-code { font-size: 15px; } .card-word { letter-spacing: 0; font-size: clamp(10px, 1.3vw, 14px); } }
+        @media (max-width: 780px) { .shell { padding: 0 24px; } .masthead { min-height: 85px; } .nav-actions { gap: 16px; } .intro { padding-top: 30px; } .layout { grid-template-columns: minmax(0, 1fr); gap: 21px; } .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } .sidebar .panel { margin: 0; } .score-panel { grid-column: 1 / -1; display: flex; align-items: center; gap: 22px; } .score-panel .panel-title { margin: 0; max-width: 65px; line-height: 1.7; } .score-row { flex: 1; } .score-row + .score-row { border: 0; border-left: 1px solid var(--line); padding: 0 0 0 22px; margin: 0; } .remaining { display: none; } .card { min-height: 93px; } .card-word { font-size: clamp(10px, 1.8vw, 14px); } .table-label { display: none; } .legend { margin-bottom: 24px; } }
+        @media (max-width: 480px) { .shell { padding: 0 16px; } .masthead { min-height: 76px; gap: 10px; } .brand { font-size: 14px; gap: 8px; letter-spacing: 1.8px; } .brand-mark { width: 23px; gap: 3px; } .brand-mark i { height: 10px; } .nav-actions { gap: 10px; } .nav-actions .button { font-size: 10px; padding: 8px 9px; min-height: 36px; } .nav-actions .quiet { padding: 4px 0; } .nav-actions svg { display: none; } .intro { padding: 27px 0 20px; } h1 { font-size: 32px; letter-spacing: -1px; } .subtitle { font-size: 11px; max-width: 290px; } .eyebrow { font-size: 8px; } .board-top { margin-bottom: 8px; min-height: 29px; } .board-label { font-size: 10px; gap: 6px; } .mode-badge { font-size: 8px; padding: 4px; letter-spacing: .5px; } .hint { font-size: 9px; } .board { gap: 6px; } .card { min-height: 76px; border-radius: 5px; padding: 13px 2px 19px; box-shadow: 0 2px 0 #ddddd1; } .card-word { font-size: clamp(8px, 2.25vw, 11px); letter-spacing: -.2px; } .card-label { bottom: 7px; font-size: 6px; letter-spacing: .3px; } .card::before { top: 6px; left: 6px; width: 3px; height: 3px; } .card.revealed::after { font-size: 9px; top: 3px; right: 4px; } .board-bottom { min-height: 60px; gap: 8px; } .board-bottom p { font-size: 9px; max-width: 180px; } .board-bottom .button { font-size: 10px; padding: 5px 7px; } .status-banner { padding: 12px; } #game-status { font-size: 10px; } #game-status small { font-size: 9px; } .sidebar { gap: 10px; } .sidebar .panel { padding: 15px 12px; } .score-panel { gap: 12px; } .score-panel .panel-title { font-size: 8px; max-width: 53px; } .score-row { gap: 7px; } .score-row + .score-row { padding-left: 12px; } .team-symbol { width: 22px; height: 30px; font-size: 14px; } .team-name { font-size: 10px; } .score { font-size: 27px; } .start-tag { font-size: 8px; } .key-heading strong { font-size: 10px; } .panel p { font-size: 9px; } .panel-title { font-size: 8px; letter-spacing: 1.1px; margin-bottom: 12px; } #game-code { font-size: 12px; letter-spacing: .2px; } .code-line { gap: 2px; } .copy-button { min-height: 30px; padding: 6px; } .copy-button svg { width: 13px; height: 13px; } .legend { gap: 13px; margin-top: 19px; } .legend span { font-size: 8px; } footer { flex-direction: column; gap: 5px; padding-top: 17px; font-size: 8px; } }
+        @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header class="masthead">
+            <div class="brand" aria-label="Codenames"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>CODENAMES</div>
+            <nav class="nav-actions" aria-label="Actions de partie">
+                <button type="button" class="button quiet" id="rules-button">Les règles <span aria-hidden="true">↗</span></button>
+                <button type="button" class="button primary" id="new-game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nouvelle partie</button>
+            </nav>
+        </header>
+        <main>
+            <section class="intro" aria-labelledby="title">
+                <div><p class="eyebrow">Le jeu des connexions inattendues</p><h1 id="title">À vous de faire le lien.</h1><p class="subtitle">Deux équipes. Vingt-cinq mots. Et un mot à ne surtout pas toucher.</p></div>
+                <span class="table-label"><span class="dot"></span>Autour d’une même table</span>
+            </section>
+            <p id="notice" class="notice" role="status" hidden></p>
+            <div class="layout">
+                <section aria-label="Plateau de jeu">
+                    <div class="board-top"><div class="board-label"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="10" y="1" width="5" height="5" rx="1"/><rect x="1" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>Votre grille <span id="mode-badge" class="mode-badge">Joueurs</span></div><span class="hint" id="tap-hint">Double-touchez pour révéler</span></div>
+                    <div id="board" class="board" role="group" aria-label="Les 25 mots"></div>
+                    <div class="board-bottom"><p>Un indice se dit à voix haute.<br>Les meilleures connexions se font ensemble.</p><button type="button" class="button" id="undo" disabled><span aria-hidden="true">↶</span> Annuler le dernier choix</button></div>
+                    <div class="status-banner" id="status-banner"><span class="status-icon" aria-hidden="true">i</span><div id="game-status" role="status" aria-live="polite" aria-atomic="true"></div></div>
+                </section>
+                <aside class="sidebar" aria-label="Informations de partie">
+                    <section class="panel score-panel" aria-label="Agents restants">
+                        <h2 class="panel-title">La course aux agents</h2>
+                        <div class="score-row"><span class="team-symbol" aria-hidden="true">R</span><div class="team-name">Rouge<span id="red-start" class="start-tag" hidden>Commence la partie</span></div><span class="score" id="red-count" aria-label="Agents rouges restants">0</span></div>
+                        <div class="score-row"><span class="team-symbol blue" aria-hidden="true">B</span><div class="team-name">Bleue<span id="blue-start" class="start-tag" hidden>Commence la partie</span></div><span class="score blue" id="blue-count" aria-label="Agents bleus restants">0</span></div>
+                        <p class="remaining">agents à retrouver</p>
+                    </section>
+                    <section class="panel key-panel">
+                        <h2 class="panel-title">Le coin des maîtres-espions</h2>
+                        <div class="key-heading"><strong id="key-label">Afficher les couleurs</strong><label class="switch"><input type="checkbox" id="key-toggle" aria-labelledby="key-label" aria-describedby="key-help"><span class="switch-track" aria-hidden="true"></span></label></div>
+                        <p id="key-help">Sur votre téléphone, consultez la clé secrète. Révélation et annulation sont alors verrouillées.</p>
+                    </section>
+                    <section class="panel code-panel">
+                        <h2 class="panel-title">Une grille à partager</h2>
+                        <div class="code-line"><output id="game-code" aria-label="Code de partie"></output><button type="button" id="copy-code" class="button copy-button" aria-label="Copier le code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg></button></div>
+                        <p>Même adresse, même code, même grille.<br>Seule la grille initiale est partagée : révélations, compteurs et annulations restent sur cet appareil.</p>
+                        <div id="manual-copy" hidden><label for="manual-code">Copie automatique indisponible. Sélectionnez et copiez ce code :</label><input id="manual-code" type="text" readonly spellcheck="false"></div>
+                        <details id="join-details"><summary>Vous avez déjà un code ?</summary><form id="join-form" class="join-form" novalidate><label for="join-code">Code de la partie</label><input id="join-code" type="text" placeholder="A-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="join-error" maxlength="80"><button type="submit" class="button">Charger la grille <span aria-hidden="true">→</span></button><p id="join-error" class="field-error" role="alert" hidden></p></form></details>
+                    </section>
+                </aside>
+            </div>
+            <div class="legend" aria-label="Légende des couleurs"><span><i class="swatch" aria-hidden="true"></i>Agent rouge</span><span><i class="swatch blue" aria-hidden="true"></i>Agent bleu</span><span><i class="swatch neutral" aria-hidden="true"></i>Neutre</span><span><i class="swatch assassin" aria-hidden="true"></i>Assassin</span></div>
+        </main>
+        <footer><span><strong>Moins d’écrans, plus de liens.</strong> Un jeu à partager, en vrai.</span><span>Sans compte · Sans installation · Tout reste sur votre appareil</span></footer>
+    </div>
+    <dialog id="rules-dialog" aria-labelledby="rules-title">
+        <h2 id="rules-title">Un mot peut tout relier.</h2>
+        <ol><li>Formez deux équipes, rouge et bleue, avec un maître-espion par équipe. L’équipe indiquée commence avec neuf agents ; l’autre en a huit.</li><li>Posez la tablette au centre. Chaque maître-espion ouvre cette même adresse sur son téléphone, saisit le code de la tablette et active « Afficher les couleurs », à l’abri des regards.</li><li>À tour de rôle, le maître-espion donne à voix haute un seul mot et un nombre pour relier des agents de sa couleur. Son équipe peut proposer jusqu’à ce nombre de mots, plus un.</li><li>Double-touchez ou double-cliquez un mot sur la tablette pour le révéler. Au clavier, sélectionnez la carte avec Tab, puis Entrée ou Espace. Un agent adverse ou un neutre termine votre tour ; vous pouvez aussi passer oralement.</li><li>La première équipe dont tous les agents sont révélés gagne. L’assassin met immédiatement fin à la partie. Les tours et indices ne sont pas suivis par l’application.</li></ol>
+        <p>Le code partage uniquement la grille initiale. Les choix, compteurs et annulations ne se synchronisent pas. Une nouvelle partie exige de saisir le nouveau code sur les téléphones.</p>
+        <p>La clé reste dans le navigateur : elle est discrète, mais ne protège pas contre la triche. Le mode couleurs bloque les révélations et annulations accidentelles.</p>
+        <button type="button" class="button primary" id="close-rules">À la table !</button>
+    </dialog>
+    <noscript><p class="notice">Activez JavaScript pour créer et jouer une partie de Codenames.</p></noscript>
+    <script id="game-core">
+        'use strict';
+        const Codenames = (() => {
+            const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+            const VERSION = 'A';
+            const STORAGE_KEY = 'codenames.fr.saved';
+            const WORDS_A = Object.freeze(`ABEILLE ABRICOT ACACIA ACCORD ACROBATE ACTEUR ADRESSE AFFICHE AIGLE AIGUILLE AILE AIMANT AIR ALARME ALGUE ALLUMETTE ALPINISTE AMANDE AMBULANCE AMPOULE ANCRE ANGE ANIMAL ANNEAU ANTENNE ARAIGNÉE ARBRE ARC ARCHE ARGENT ARMURE ARROSOIR ARTISTE ASCENSEUR ASPIRATEUR ASSIETTE ASTRONAUTE ATELIER ATOME AUBE AUTRUCHE AVION AVOCAT BAGUETTE BALEINE BALLON BANANE BANC BANQUE BARBE BARQUE BARRAGE BATEAU BÂTON BAVETTE BEC BEURRE BIBLIOTHÈQUE BIJOU BILLE BISON BLÉ BLOC BOBINE BOIS BOÎTE BOMBE BONBON BONNET BORD BOTTE BOUCHE BOUCHON BOUCLIER BOUGIE BOULE BOUQUET BOURDON BOURSE BOUTON BRANCHE BRAS BRIQUE BROSSE BROUILLARD BULLE BUREAU CABANE CÂBLE CACAHUÈTE CADRE CAFÉ CAGE CAILLOU CAISSE CAMÉLÉON CAMÉRA CAMION CAMP CANAL CANARD CANNE CANON CAPE CAPITAINE CARAVANE CAROTTE CARREAU CARTE CASCADE CASQUE CASSEROLE CASTOR CATHÉDRALE CAVE CEINTURE CENDRE CERF CERISE CERVEAU CHAÎNE CHAISE CHAMEAU CHAMP CHAMPIGNON CHANCE CHANDELLE CHANSON CHAPEAU CHARBON CHARGE CHAT CHÂTEAU CHAUSSETTE CHAUSSURE CHEF CHEMIN CHEMISE CHENILLE CHEVAL CHEVEU CHÈVRE CHIEN CHIFFRE CHOCOLAT CHOU CHOUETTE CIEL CIGALE CIMENT CINÉMA CIRQUE CISEAUX CITRON CLASSE CLÉ CLOCHE CLOWN COCCINELLE COCHON COCO CŒUR COFFRE COL COLLE COLLINE COLONNE COMÈTE COMPAS COMPTE CONCERT CONCOMBRE CONDUCTEUR CONFITURE CONSOLE CONTE COQ COQUILLAGE CORAIL CORDE CORNE CORPS COSTUME COU COUCHE COUDE COULEUR COULOIR COUR COURANT COURONNE COURSE COUTEAU COUVERTURE CRABE CRAYON CRÊPE CRÊTE CREVETTE CROCHET CROCODILE CROIX CROÛTE CUBE CUILLÈRE CUISINE CUIVRE CYGNE DAME DANSE DAUPHIN DENT DÉSERT DESSIN DIAMANT DINOSAURE DISQUE DOCTEUR DOIGT DOMINO DONJON DRAGON DRAP DRAPEAU DROIT DRONE DUNE ÉCHELLE ÉCLAIR ÉCLIPSE ÉCOLE ÉCORCE ÉCRAN ÉCUREUIL ÉCUME ÉGLISE ÉLÉPHANT ÉMERAUDE EMPIRE ENCRE ENFANT ÉPÉE ÉPICE ÉPINE ÉPONGE ÉQUILIBRE ESCALIER ESCARGOT ESPACE ESPION ÉTANG ÉTOILE ÉVENTAIL FANTÔME FARINE FAUCON FAUTEUIL FÉE FENÊTRE FER FERME FEU FEUILLE FÈVE FICELLE FIGUE FIL FILET FILM FLAMME FLÈCHE FLEUR FLEUVE FLOCON FLÛTE FOIRE FONTAINE FORÊT FOUR FOURCHE FOURMI FOYER FRAISE FRAMBOISE FREIN FROMAGE FRONT FRONTIÈRE FUSÉE FUSIL GÂTEAU GANT GARAGE GARE GARDIEN GAZ GAZELLE GÉANT GEL GIRAFE GLACE GLAND GLOBE GORGE GORILLE GOUTTE GRAIN GRAINE GRANGE GRAPPE GRENOUILLE GRENIER GRÈVE GRILLE GROTTE GRUE GUÊPE GUITARE HACHE HAMAC HAMSTER HARENG HÉLICOPTÈRE HÉRISSON HERBE HÉROS HIBOU HIPPOPOTAME HISTOIRE HIVER HÔPITAL HORLOGE HUILE HUÎTRE ÎLE IMPRIMANTE INCENDIE INDIEN INSECTE INSTRUMENT IRIS JAGUAR JAMBON JARDIN JAUGE JAUNE JET JEU JOIE JOKER JOUR JOURNAL JUGE JUMELLES JUNGLE JUPE KANGOUROU KARATÉ KAYAK KÉPI KIWI KOALA LAC LAINE LAIT LAME LAMPE LANCE LANGUE LAPIN LARME LASER LÉGENDE LÉOPARD LETTRE LÉZARD LIBELLULE LICORNE LIÈGE LIÈVRE LIGNE LIMACE LION LIT LIVRE LOCOMOTIVE LOGE LONGUEUR LOTUS LOUP LOUPE LOUTRE LUGE LUMIÈRE LUNE LUNETTES LUTIN MACHINE MAGICIEN MAIN MAISON MAÎTRE MAÏS MALLE MANCHE MANDARINE MANÈGE MANGUE MANOIR MANTEAU MARAIS MARCHÉ MARCHE MARGUERITE MARIN MARTEAU MASQUE MÂT MATELAS MÉDAILLE MÉDECIN MÉDUSE MÉLANGE MENTHE MER MERLE MÉTAL MÉTÉORE MÉTRO MEUBLE MIEL MINE MINUTE MIROIR MISSILE MOINE MOISSON MONTAGNE MONTRE MORT MOTEUR MOUCHE MOULE MOULIN MOUSSE MOUSTACHE MOUSTIQUE MOUTARDE MOUTON MUR MUSCLE MUSÉE MUSIQUE NAPPE NAVET NAVIRE NEIGE NÉNUPHAR NERF NEZ NID NOEUD NOIR NOISETTE NOIX NOMBRE NOTE NUAGE NUIT OCÉAN ŒIL ŒUF OIE OIGNON OISEAU OLIVE OMBRE ONDE ONGLE OPÉRA OR ORAGE ORANGE ORBITE ORCHESTRE ORDRE OREILLE ORGUE ORME OURS OURSIN OUTIL OUVRAGE PAGE PAILLE PAIN PAIX PALAIS PALME PALMIER PANDA PANIER PANNE PANNEAU PANTHÈRE PAPILLON PARACHUTE PARADIS PARAPLUIE PARC PARCHEMIN PARFUM PAS PASSAGE PASTÈQUE PATIN PATTE PAUME PAUSE PAVÉ PEAU PÊCHE PEIGNE PEINTURE PELLE PENDULE PENSÉE PERCEUSE PERLE PERROQUET PERSIL PHARE PHARMACIE PHOQUE PHOTO PIANO PIC PIÈCE PIED PIERRE PIEUVRE PIGEON PILOTE PIN PINCE PINCEAU PINGOUIN PION PIPE PIRATE PISCINE PISTE PISTOLET PIZZA PLAGE PLANCHE PLANÈTE PLANTE PLÂTRE PLUIE PLUME POCHE POÊLE POIDS POIGNÉE POIL POING POIRE POISON POISSON POIVRE POLICE POMME POMPE POMPIER PONT PORC PORT PORTE POSTE POT POUCE POULE POUPÉE POUSSE POUSSIÈRE PRAIRIE PRINCE PRISE PRISON PRINTEMPS PRUNE PUCE PUITS PULL PYRAMIDE QUAI QUARTIER QUEUE QUILLE QUOTIDIEN RACINE RADAR RADIO RADIS RAIE RAIL RAISIN RAMPE RANG RAT RÂTEAU RAYON REINE RENARD RENNE REPAS REQUIN RÉSEAU RESSORT RÊVE RIDEAU RING RIVIÈRE RIZ ROBE ROBINET ROCHE ROCHER ROI ROMAN ROND ROSE ROSEAU ROUE ROUGE ROULEAU ROUTE RUBAN RUCHE RUE SABLE SABLIER SABOT SAC SAFRAN SAGE SALADE SALLE SALON SANG SAPIN SARDINE SATELLITE SAUCE SAUCISSE SAULE SAUMON SAVON SCARABÉE SCÈNE SCIE SCIENTIFIQUE SCORPION SCULPTURE SEAU SECRET SEIGNEUR SEL SELLE SENS SERPENT SERRURE SERVIETTE SIÈGE SIFFLET SIGNE SILENCE SINGE SIROP SKI SOIE SOIF SOIR SOL SOLDAT SOLEIL SOMMET SON SORCIER SORTIE SOUCHE SOUFFLE SOUPE SOURCIL SOURIS SOURCE SOUTERRAIN SPHÈRE SPORT SQUELETTE STADE STATION STATUE STYLO SUCRE SUD SUJET SURFACE TABLE TABLEAU TABLIER TAMBOUR TAPIS TASSE TAUPE TAUREAU TAXI TÉLÉPHONE TEMPLE TEMPS TENTE TERRE TÊTE THÉ THÉÂTRE THON TIGRE TIMBRE TISSU TOILE TOIT TOMATE TOMBE TONNERRE TORCHE TORNADE TORTUE TOUR TOUPIE TRAIN TRAÎNEAU TRÉSOR TRIANGLE TRICOT TRÔNE TROU TRUFFE TUBE TULIPE TUNNEL TURBAN USINE VACHE VAGUE VAISSEAU VALLÉE VAMPIRE VASE VÉLO VELOURS VENT VENTRE VER VERRE VESTE VIANDE VIE VIGNE VILLE VIN VIOLON VIPÈRE VIRUS VIS VISAGE VITRE VOILE VOISIN VOITURE VOL VOLANT VOLCAN VOLEUR VOLET VOYAGE WAGON YAOURT YÉTI ZÈBRE ZÉRO ZINC ZONE ZOO`.split(' '));
+            const LABELS = Object.freeze({ red: 'Agent rouge', blue: 'Agent bleu', neutral: 'Neutre', assassin: 'Assassin' });
+            function normalizeCode(input) {
+                if (typeof input !== 'string') throw new Error('Saisissez un code de partie.');
+                const value = input.toUpperCase().replace(/[\s\-–—_.]/g, '');
+                if (!/^[A-Z2-9]{9}$/.test(value) || [...value].some(char => !ALPHABET.includes(char))) throw new Error('Code invalide : utilisez les 9 caractères du code partagé.');
+                if (value[0] !== VERSION) throw new Error('Version de grille non prise en charge. Utilisez un code commençant par A.');
+                return value[0] + '-' + value.slice(1, 5) + '-' + value.slice(5);
+            }
+            function createCode(cryptoSource = globalThis.crypto) {
+                if (!cryptoSource || typeof cryptoSource.getRandomValues !== 'function') throw new Error('Création sécurisée indisponible. Saisissez le code d’un autre appareil ou ouvrez le jeu dans un navigateur récent.');
+                const bytes = cryptoSource.getRandomValues(new Uint8Array(8));
+                return normalizeCode(VERSION + Array.from(bytes, byte => ALPHABET[byte & 31]).join(''));
+            }
+            function hash(text) {
+                let value = 2166136261;
+                for (let i = 0; i < text.length; i++) { value ^= text.charCodeAt(i); value = Math.imul(value, 16777619); }
+                return value >>> 0;
+            }
+            function stream(seed) {
+                let value = seed >>> 0;
+                return () => {
+                    value = (value + 0x6D2B79F5) >>> 0;
+                    let output = value;
+                    output = Math.imul(output ^ (output >>> 15), output | 1);
+                    output ^= output + Math.imul(output ^ (output >>> 7), output | 61);
+                    return ((output ^ (output >>> 14)) >>> 0) / 4294967296;
+                };
+            }
+            function shuffle(items, random) {
+                const result = items.slice();
+                for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; }
+                return result;
+            }
+            function generateBoard(input) {
+                const code = normalizeCode(input);
+                const wordsRandom = stream(hash('codenames:A:words:' + code));
+                const colorsRandom = stream(hash('codenames:A:colors:' + code));
+                const start = colorsRandom() < .5 ? 'red' : 'blue';
+                const colors = shuffle([...Array(9).fill(start), ...Array(8).fill(start === 'red' ? 'blue' : 'red'), ...Array(7).fill('neutral'), 'assassin'], colorsRandom);
+                const words = shuffle(WORDS_A, wordsRandom).slice(0, 25);
+                return { code, start, cards: words.map((word, index) => ({ word, color: colors[index] })) };
+            }
+            function newState(input) { return { ...generateBoard(input), revealed: [], history: [], keyMode: false }; }
+            function remaining(state, color) { return state.cards.reduce((total, card, index) => total + Number(card.color === color && !state.revealed.includes(index)), 0); }
+            function outcome(state) {
+                if (state.revealed.some(index => state.cards[index].color === 'assassin')) return 'assassin';
+                if (remaining(state, 'red') === 0) return 'red';
+                if (remaining(state, 'blue') === 0) return 'blue';
+                return null;
+            }
+            function reveal(state, index) {
+                if (state.keyMode || !Number.isInteger(index) || index < 0 || index >= 25 || state.revealed.includes(index) || outcome(state)) return state;
+                return { ...state, revealed: [...state.revealed, index], history: [...state.history, index] };
+            }
+            function undo(state) {
+                if (state.keyMode || !state.history.length) return state;
+                const index = state.history[state.history.length - 1];
+                return { ...state, revealed: state.revealed.filter(item => item !== index), history: state.history.slice(0, -1) };
+            }
+            function serialize(state) { return JSON.stringify({ schema: 1, code: state.code, revealed: state.revealed, history: state.history }); }
+            function restore(raw) {
+                try {
+                    const saved = JSON.parse(raw);
+                    if (!saved || saved.schema !== 1 || !Array.isArray(saved.revealed) || !Array.isArray(saved.history) || saved.history.length > 25 || saved.revealed.length !== saved.history.length) throw new Error();
+                    if (new Set(saved.revealed).size !== saved.revealed.length || saved.revealed.some(index => !Number.isInteger(index) || index < 0 || index >= 25)) throw new Error();
+                    let state = newState(saved.code);
+                    for (const index of saved.history) {
+                        const next = reveal(state, index);
+                        if (next === state) throw new Error();
+                        state = next;
+                    }
+                    if (saved.revealed.some(index => !state.revealed.includes(index))) throw new Error();
+                    return state;
+                } catch { return null; }
+            }
+            function load(storage) {
+                try {
+                    const raw = storage.getItem(STORAGE_KEY);
+                    if (raw === null) return { state: null, issue: null };
+                    const state = restore(raw);
+                    return { state, issue: state ? null : 'corrupt' };
+                } catch { return { state: null, issue: 'unavailable' }; }
+            }
+            function save(storage, state) {
+                try { storage.setItem(STORAGE_KEY, serialize(state)); return true; } catch { return false; }
+            }
+            return Object.freeze({ ALPHABET, VERSION, STORAGE_KEY, WORDS_A, LABELS, normalizeCode, createCode, hash, stream, shuffle, generateBoard, newState, remaining, outcome, reveal, undo, serialize, restore, load, save });
+        })();
+    </script>
+    <script id="game-ui">
+        'use strict';
+        (() => {
+            const $ = id => document.getElementById(id);
+            let storage;
+            try { storage = window.localStorage; } catch { storage = null; }
+            const loaded = Codenames.load(storage);
+            let state = loaded.state;
+            let lastTap = null;
+            let pointerStart = null;
+            let fallbackId = 0;
+            function notify(text) { $('notice').textContent = text; $('notice').hidden = false; }
+            if (loaded.issue === 'corrupt') notify('La sauvegarde est illisible. Une nouvelle grille a été créée ; les anciens choix n’ont pas été restaurés.');
+            if (loaded.issue === 'unavailable') notify('Le stockage local est indisponible. Vous pouvez jouer, mais une actualisation effacera vos choix. Notez votre code.');
+            if (!state) {
+                try { state = Codenames.newState(Codenames.createCode()); }
+                catch (error) { notify(error.message); }
+            }
+            function persist() {
+                if (state && !Codenames.save(storage, state)) notify('Sauvegarde impossible sur cet appareil. Après actualisation, vos choix peuvent être perdus ou revenir à une ancienne sauvegarde. Notez votre code.');
+            }
+            function render() {
+                const focusedIndex = $('board').contains(document.activeElement) ? Number(document.activeElement.dataset.index) : null;
+                $('board').replaceChildren();
+                $('key-toggle').checked = state ? state.keyMode : false;
+                $('key-toggle').disabled = !state;
+                $('copy-code').disabled = !state;
+                $('undo').disabled = !state || state.keyMode || !state.history.length;
+                if (!state) {
+                    $('game-code').textContent = '—';
+                    $('game-status').textContent = 'Créez une partie ou saisissez un code pour commencer.';
+                    return;
+                }
+                const end = Codenames.outcome(state);
+                $('game-code').textContent = state.code;
+                $('red-count').textContent = Codenames.remaining(state, 'red');
+                $('blue-count').textContent = Codenames.remaining(state, 'blue');
+                $('red-start').hidden = state.start !== 'red';
+                $('blue-start').hidden = state.start !== 'blue';
+                $('mode-badge').textContent = state.keyMode ? 'Clé secrète' : 'Joueurs';
+                $('tap-hint').textContent = state.keyMode ? 'Consultation · choix verrouillés' : 'Double-touchez pour révéler';
+                state.cards.forEach((card, index) => {
+                    const revealed = state.revealed.includes(index);
+                    const visible = state.keyMode || revealed;
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'card' + (visible ? ' ' + card.color : '') + (revealed ? ' revealed' : state.keyMode ? ' key-only' : '');
+                    button.dataset.index = index;
+                    button.disabled = state.keyMode || revealed || Boolean(end);
+                    button.setAttribute('aria-label', card.word + (visible ? ', ' + Codenames.LABELS[card.color] + (revealed ? ', révélée' : ', non révélée') : ', carte cachée. Double-touchez ou appuyez sur Entrée ou Espace pour révéler.'));
+                    const word = document.createElement('span');
+                    word.className = 'card-word';
+                    word.textContent = card.word;
+                    const label = document.createElement('span');
+                    label.className = 'card-label';
+                    label.textContent = visible ? Codenames.LABELS[card.color] : '';
+                    button.append(word, label);
+                    $('board').append(button);
+                });
+                $('status-banner').className = 'status-banner' + (end ? ' finished' : '') + (end === 'assassin' ? ' assassin-end' : '');
+                const title = document.createElement('span');
+                const description = document.createElement('small');
+                if (end === 'assassin') {
+                    title.textContent = 'L’assassin a été révélé. Partie terminée.';
+                    description.textContent = 'Les tours ne sont pas suivis. Annulez le dernier choix en cas d’erreur.';
+                } else if (end) {
+                    title.textContent = 'Victoire de l’équipe ' + (end === 'red' ? 'rouge' : 'bleue') + ' !';
+                    description.textContent = 'Tous ses agents ont été retrouvés. Une autre partie ?';
+                } else if (state.keyMode) {
+                    title.textContent = 'La clé est affichée. À l’abri des regards !';
+                    description.textContent = 'Aucun mot ne peut être révélé ou annulé dans ce mode.';
+                } else {
+                    title.textContent = state.revealed.length ? 'À vous de faire les connexions.' : 'L’équipe ' + (state.start === 'red' ? 'rouge' : 'bleue') + ' ouvre le jeu.';
+                    description.textContent = 'Indices et tours à voix haute. Attention à l’assassin !';
+                }
+                $('game-status').replaceChildren(title, description);
+                if (focusedIndex !== null) {
+                    const cards = [...$('board').querySelectorAll('button')];
+                    const next = cards.slice(focusedIndex + 1).find(card => !card.disabled) || cards.find(card => !card.disabled);
+                    (next || (!$('undo').disabled ? $('undo') : $('key-toggle'))).focus();
+                }
+            }
+            function apply(next) {
+                lastTap = null;
+                if (!state || next === state) return;
+                state = next;
+                persist();
+                render();
+            }
+            function choose(index) { if (state) apply(Codenames.reveal(state, index)); }
+            function cardFrom(event) { return event.target.closest('button[data-index]'); }
+            $('board').addEventListener('dblclick', event => {
+                event.preventDefault();
+                const card = cardFrom(event);
+                if (card) choose(Number(card.dataset.index));
+            });
+            $('board').addEventListener('click', event => {
+                const card = cardFrom(event);
+                if (card && event.detail === 0) choose(Number(card.dataset.index));
+            });
+            $('board').addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    const card = cardFrom(event);
+                    if (card) {
+                        event.preventDefault();
+                        if (!event.repeat) choose(Number(card.dataset.index));
+                    }
+                }
+            });
+            $('board').addEventListener('pointerdown', event => {
+                if (event.pointerType !== 'touch') return;
+                if (!event.isPrimary) { lastTap = null; pointerStart = null; return; }
+                pointerStart = { x: event.clientX, y: event.clientY, time: performance.now(), id: event.pointerId, card: cardFrom(event) };
+            });
+            $('board').addEventListener('pointercancel', () => { pointerStart = null; lastTap = null; });
+            $('board').addEventListener('pointerup', event => {
+                if (event.pointerType !== 'touch' || !event.isPrimary) return;
+                const start = pointerStart;
+                pointerStart = null;
+                const card = cardFrom(event);
+                const now = performance.now();
+                if (!start || start.id !== event.pointerId || start.card !== card || !card || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 16 || now - start.time > 500) { lastTap = null; return; }
+                if (lastTap && lastTap.card === card && now - lastTap.time < 450) { event.preventDefault(); choose(Number(card.dataset.index)); }
+                else lastTap = { card, time: now };
+            });
+            $('undo').addEventListener('click', () => {
+                if (!state || state.keyMode || !state.history.length) return;
+                const index = state.history[state.history.length - 1];
+                apply(Codenames.undo(state));
+                $('board').querySelector('[data-index="' + index + '"]').focus();
+            });
+            $('key-toggle').addEventListener('change', () => {
+                if (!state) return;
+                state = { ...state, keyMode: $('key-toggle').checked };
+                lastTap = null;
+                pointerStart = null;
+                render();
+            });
+            function replaceGame(code) {
+                const next = Codenames.newState(code);
+                if (state && next.code === state.code) {
+                    $('join-error').hidden = true;
+                    $('join-code').removeAttribute('aria-invalid');
+                    $('join-code').value = '';
+                    return true;
+                }
+                if (state && !window.confirm('Remplacer cette partie ? Les choix et annulations de cet appareil seront effacés. Le nouveau code devra être saisi sur les téléphones.')) return false;
+                state = next;
+                lastTap = null;
+                pointerStart = null;
+                fallbackId++;
+                $('manual-copy').hidden = true;
+                $('copy-code').setAttribute('aria-label', 'Copier le code');
+                $('notice').hidden = true;
+                $('notice').textContent = '';
+                $('join-code').value = '';
+                $('join-error').hidden = true;
+                $('join-code').removeAttribute('aria-invalid');
+                persist();
+                render();
+                return true;
+            }
+            $('new-game').addEventListener('click', () => {
+                try { replaceGame(Codenames.createCode()); }
+                catch (error) { notify(error.message); }
+            });
+            $('join-form').addEventListener('submit', event => {
+                event.preventDefault();
+                try {
+                    const code = Codenames.normalizeCode($('join-code').value);
+                    if (replaceGame(code)) $('join-details').open = false;
+                } catch (error) {
+                    $('join-error').textContent = error.message;
+                    $('join-error').hidden = false;
+                    $('join-code').setAttribute('aria-invalid', 'true');
+                }
+            });
+            $('copy-code').addEventListener('click', async () => {
+                if (!state) return;
+                const code = state.code;
+                const id = ++fallbackId;
+                try {
+                    await navigator.clipboard.writeText(code);
+                    if (id !== fallbackId) return;
+                    $('copy-code').setAttribute('aria-label', 'Code copié');
+                    $('manual-copy').hidden = true;
+                    notify('Code copié : ' + code + '. Ouvrez la même adresse sur le téléphone et saisissez ce code.');
+                } catch {
+                    if (id !== fallbackId) return;
+                    $('manual-copy').hidden = false;
+                    $('manual-code').value = code;
+                    $('manual-code').focus();
+                    $('manual-code').select();
+                }
+            });
+            $('rules-button').addEventListener('click', () => $('rules-dialog').showModal());
+            $('close-rules').addEventListener('click', () => $('rules-dialog').close());
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && state && state.keyMode) {
+                    state = { ...state, keyMode: false };
+                    lastTap = null;
+                    render();
+                }
+            });
+            persist();
+            render();
+        })();
+    </script>
+</body>
+</html>
